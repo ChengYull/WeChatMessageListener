@@ -1,0 +1,437 @@
+微信群聊发言统计 App 完整设计方案
+基于 Kotlin + Android 原生无障碍服务 的实现方案。通过监听微信聊天界面变化，提取发言人昵称，去重后写入本地 Room 数据库，并在 App 内展示发言排行榜。
+
+一、 项目结构预览
+
+app/src/main/
+├── AndroidManifest.xml
+├── java/com/example/wechatstats/
+│   ├── MainActivity.kt              # 主界面，展示统计排行
+│   ├── StatsAdapter.kt              # RecyclerView 适配器
+│   ├── WeChatMonitorService.kt      # 无障碍服务核心逻辑
+│   └── data/
+│       ├── AppDatabase.kt           # Room 数据库实例
+│       ├── StatsDao.kt              # 数据库操作接口
+│       └── UserStats.kt             # 数据实体类
+└── res/
+    ├── layout/
+    │   ├── activity_main.xml        # 主界面布局
+    │   └── item_stats.xml           # 列表单项布局
+    ├── values/
+    │   └── strings.xml
+    └── xml/
+        └── accessibility_config.xml # 无障碍服务配置
+二、 环境与依赖配置
+在 build.gradle.kts (Module: app) 中配置 Room 和协程依赖：
+
+
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("com.google.devtools.ksp") // 必须添加 KSP 插件用于 Room
+}
+
+dependencies {
+    // Room 数据库
+    val room_version = "2.6.1"
+    implementation("androidx.room:room-runtime:$room_version")
+    implementation("androidx.room:room-ktx:$room_version")
+    ksp("androidx.room:room-compiler:$room_version")
+
+    // 协程
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+    // Lifecycle (用于 Flow 收集)
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
+}
+三、 AndroidManifest.xml 配置
+注册无障碍服务，并申请保持屏幕常亮的基础权限：
+
+
+
+
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.wechatstats">
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="群聊统计器"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- 注册无障碍服务 -->
+        <service
+            android:name=".WeChatMonitorService"
+            android:exported="false"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_config" />
+        </service>
+    </application>
+</manifest>
+四、 资源文件
+1. res/xml/accessibility_config.xml
+
+
+
+<?xml version="1.0" encoding="utf-8"?>
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowContentChanged|typeWindowStateChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagDefault|flagRetrieveInteractiveWindows"
+    android:canRetrieveWindowContent="true"
+    android:description="@string/accessibility_desc"
+    android:notificationTimeout="100"
+    android:packageNames="com.tencent.mm" /> <!-- 仅监听微信 -->
+2. res/values/strings.xml
+
+
+
+<resources>
+    <string name="app_name">群聊统计器</string>
+    <string name="accessibility_desc">监听微信群聊消息并统计发言次数。仅在本机闲置测试机运行。</string>
+</resources>
+3. res/layout/activity_main.xml
+
+
+
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <Button
+        android:id="@+id/btnOpenAccessibility"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="去开启无障碍服务" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerViewStats"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="16dp" />
+</LinearLayout>
+4. res/layout/item_stats.xml
+
+
+
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="12dp">
+
+    <TextView
+        android:id="@+id/tvNickname"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textSize="16sp"
+        android:textColor="#000000"
+        android:text="昵称" />
+
+    <TextView
+        android:id="@+id/tvCount"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="16sp"
+        android:textColor="#FF5722"
+        android:textStyle="bold"
+        android:text="0 次" />
+</LinearLayout>
+五、 核心代码实现
+1. 数据层 (data 包)
+UserStats.kt
+
+
+package com.example.wechatstats.data
+
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+@Entity(tableName = "user_stats")
+data class UserStats(
+    @PrimaryKey val nickname: String,
+    var count: Int = 0
+)
+StatsDao.kt
+
+
+package com.example.wechatstats.data
+
+import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface StatsDao {
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(user: UserStats)
+
+    @Query("UPDATE user_stats SET count = count + 1 WHERE nickname = :nickname")
+    suspend fun incrementCount(nickname: String)
+
+    @Query("SELECT * FROM user_stats ORDER BY count DESC")
+    fun getAllStats(): Flow<List<UserStats>>
+}
+AppDatabase.kt
+
+
+package com.example.wechatstats.data
+
+import android.content.Context
+import androidx.room.Database
+import androidx.room.Room
+import androidx.room.RoomDatabase
+
+@Database(entities = [UserStats::class], version = 1)
+abstract class AppDatabase : RoomDatabase() {
+    abstract fun statsDao(): StatsDao
+
+    companion object {
+        @Volatile
+        private var INSTANCE: AppDatabase? = null
+
+        fun getDatabase(context: Context): AppDatabase {
+            return INSTANCE ?: synchronized(this) {
+                val instance = Room.databaseBuilder(
+                    context.applicationContext,
+                    AppDatabase::class.java,
+                    "wechat_stats_db"
+                ).build()
+                INSTANCE = instance
+                instance
+            }
+        }
+    }
+}
+2. 无障碍服务 (WeChatMonitorService.kt)
+
+package com.example.wechatstats
+
+import android.accessibilityservice.AccessibilityService
+import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
+import com.example.wechatstats.data.AppDatabase
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+
+class WeChatMonitorService : AccessibilityService() {
+
+    private val serviceScope = CoroutineScope(Dispatchers.IO)
+    private var lastProcessedMessage: String = "" // 用于简单的去重
+
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        if (event?.packageName?.toString() != "com.tencent.mm") return
+
+        val rootNode = rootInActiveWindow ?: return
+
+        // 1. 查找聊天列表
+        val chatListView = findChatListView(rootNode) ?: return
+
+        // 2. 遍历最后 3 条消息（新消息通常在底部）
+        val childCount = chatListView.childCount
+        if (childCount == 0) return
+
+        for (i in (childCount - 1) downTo maxOf(0, childCount - 3)) {
+            val msgNode = chatListView.getChild(i) ?: continue
+
+            // 3. 提取发言人
+            val sender = extractSenderName(msgNode)
+
+            if (sender != null && sender != lastProcessedMessage) {
+                lastProcessedMessage = sender
+
+                // 4. 写入数据库
+                val dao = AppDatabase.getDatabase(applicationContext).statsDao()
+                serviceScope.launch {
+                    dao.insert(com.example.wechatstats.data.UserStats(sender, 0))
+                    dao.incrementCount(sender)
+                }
+                break // 找到一条新消息就跳出，等下次触发
+            }
+        }
+    }
+
+    // 递归寻找 RecyclerView
+    private fun findChatListView(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        if (root.className == "androidx.recyclerview.widget.RecyclerView" ||
+            root.className == "android.widget.ListView") {
+            return root
+        }
+        for (i in 0 until root.childCount) {
+            val child = root.getChild(i) ?: continue
+            val found = findChatListView(child)
+            if (found != null) return found
+        }
+        return null
+    }
+
+    // 提取发言人昵称
+    private fun extractSenderName(msgNode: AccessibilityNodeInfo): String? {
+        // 注意：这里的逻辑需要你用 Layout Inspector 实际查看微信结构！
+        // 以下是一个通用的遍历查找逻辑，寻找包含文本的第一个 TextView
+        // 在群聊中，别人的消息通常：头像 -> 昵称 TextView -> 消息气泡 TextView
+
+        // 简单的遍历寻找法：找到第一个有文本的 TextView 视为昵称
+        // （此逻辑较脆弱，强烈建议替换为 resource-id 查找）
+        return findFirstTextNode(msgNode)
+    }
+
+    private fun findFirstTextNode(node: AccessibilityNodeInfo): String? {
+        if (node.text != null && node.text.toString().isNotEmpty()) {
+            val text = node.text.toString()
+            // 过滤掉常见的系统提示或时间
+            if (text.contains("撤回了一条消息") || text.contains(":") || text.length > 20) {
+                return null
+            }
+            return text
+        }
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            val result = findFirstTextNode(child)
+            if (result != null) return result
+        }
+        return null
+    }
+
+    override fun onInterrupt() {}
+
+    // 提供给外部检查服务是否运行
+    companion object {
+        var isRunning = false
+    }
+
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        isRunning = true
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        isRunning = false
+    }
+}
+3. UI 层 (MainActivity.kt 与 StatsAdapter.kt)
+StatsAdapter.kt
+
+
+package com.example.wechatstats
+
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.TextView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
+import androidx.recyclerview.widget.RecyclerView
+import com.example.wechatstats.data.UserStats
+
+class StatsAdapter : ListAdapter<UserStats, StatsAdapter.StatsViewHolder>(DiffCallback()) {
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): StatsViewHolder {
+        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_stats, parent, false)
+        return StatsViewHolder(view)
+    }
+
+    override fun onBindViewHolder(holder: StatsViewHolder, position: Int) {
+        val item = getItem(position)
+        holder.tvNickname.text = "${position + 1}.${item.nickname}"
+        holder.tvCount.text = "${item.count} 次"
+    }
+
+    class StatsViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val tvNickname: TextView = view.findViewById(R.id.tvNickname)
+        val tvCount: TextView = view.findViewById(R.id.tvCount)
+    }
+
+    class DiffCallback : DiffUtil.ItemCallback<UserStats>() {
+        override fun areItemsTheSame(oldItem: UserStats, newItem: UserStats) = oldItem.nickname == newItem.nickname
+        override fun areContentsTheSame(oldItem: UserStats, newItem: UserStats) = oldItem == newItem
+    }
+}
+MainActivity.kt
+
+
+package com.example.wechatstats
+
+import android.content.Intent
+import android.os.Bundle
+import android.provider.Settings
+import android.view.WindowManager
+import android.widget.Button
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.example.wechatstats.data.AppDatabase
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var adapter: StatsAdapter
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        // 保持屏幕常亮，防止息屏导致无障碍失效
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+        adapter = StatsAdapter()
+        findViewById<RecyclerView>(R.id.recyclerViewStats).apply {
+            layoutManager = LinearLayoutManager(this@MainActivity)
+            this.adapter = this@MainActivity.adapter
+        }
+
+        // 跳转无障碍设置
+        findViewById<Button>(R.id.btnOpenAccessibility).setOnClickListener {
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        }
+
+        // 监听数据库变化并更新 UI
+        val dao = AppDatabase.getDatabase(this).statsDao()
+        lifecycleScope.launch {
+            dao.getAllStats().collectLatest { statsList ->
+                adapter.submitList(statsList)
+            }
+        }
+    }
+}
+六、 调试与避坑指南
+完善 extractSenderName 方法（最重要）：
+上述代码中的 findFirstTextNode 是一个比较粗糙的示例。你必须使用 Android Studio 的 Layout Inspector 连接手机，观察微信群聊的界面层级。
+找到显示昵称的 TextView，查看它的 view id（例如可能是 com.tencent.mm:id/xxx）。
+将 extractSenderName 替换为更精准的 ID 查找：
+
+     val nameNodes = msgNode.findAccessibilityNodeInfosByViewId("com.tencent.mm:id/你的实际ID")
+     if (nameNodes.isNotEmpty()) return nameNodes[0].text?.toString()
+防杀后台：
+在闲置手机的系统设置中，找到你的 App，允许“自启动”，并在电池设置中将其设为“无限制”或“不优化电池使用”。
+挂机测试：
+开启无障碍后，将微信停留在目标群聊界面。用另一个手机在群里发消息，观察你的 App 界面是否实时刷新了排行榜。
