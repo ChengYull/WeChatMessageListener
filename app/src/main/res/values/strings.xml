@@ -1,3 +1,6 @@
 <resources>
-    <string name="app_name">My Application</string>
+    <string name="app_name">群聊统计器</string>
+    <string name="btn_open_listener">去开启通知监听权限</string>
+    <string name="listener_enabled">通知监听已开启</string>
+    <string name="btn_clear">清空统计</string>
 </resources>
