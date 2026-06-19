@@ -54,7 +54,7 @@ Manifest 注册 `MainActivity`（LAUNCHER）与带 `BIND_NOTIFICATION_LISTENER_S
 
 ## Git 操作规范
 
-本仓库是**本地仓库**（无远端，分支 `master`）。每次完成一组修改或操作后，**必须**主动创建提交，不需要等待用户指令。
+本仓库分支 `master`，远程 `origin` 指向 `https://github.com/ChengYull/WeChatMessageListener.git`。每次完成一组修改或操作后，**必须**主动创建提交，不需要等待用户指令。
 
 流程：
 
@@ -73,5 +73,7 @@ Manifest 注册 `MainActivity`（LAUNCHER）与带 `BIND_NOTIFICATION_LISTENER_S
    ```
 
 5. 提交后 `git log --oneline -5` 复核。
-6. **不要**执行 `git push`（本地仓库无远端）、`git reset --hard`、`git rebase -i`、`--no-verify`、`--amend` 等破坏性或交互式操作，除非用户明确要求。
-7. 若一次任务包含多个独立逻辑单元（如"配置依赖"和"实现数据层"），应分多次提交而非一次大提交。
+6. **默认不自动 push**——提交是本地的，是否推送到 `origin` 需用户显式要求（"push 一下"、"同步到远程"等）。用户要求 push 时执行 `git push origin master`；**禁止** `git push --force`、`git push --force-with-lease` 到任何分支，除非用户明确指定。
+7. **不要**执行 `git reset --hard`、`git rebase -i`、`--no-verify`、`--amend` 等破坏性或交互式操作，除非用户明确要求。
+8. 若一次任务包含多个独立逻辑单元（如"配置依赖"和"实现数据层"），应分多次提交而非一次大提交。
+9. 推送前若 `git status` 显示本地落后于 `origin/master`，先 `git pull --rebase origin master` 再 push；遇到冲突停止并报告用户，不要自行强推。
