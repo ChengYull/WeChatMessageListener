@@ -1,25 +1,24 @@
 package com.example.wechatstats
 
-import android.app.Application
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
 import android.view.WindowManager
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.example.wechatstats.data.StatsRow
-import com.example.wechatstats.ui.StatsViewModel
+import com.example.wechatstats.data.AppDatabase
+import com.example.wechatstats.data.GroupRow
+import com.example.wechatstats.data.StatsRepository
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var viewModel: StatsViewModel
-    private lateinit var adapter: StatsAdapter
+    private lateinit var repository: StatsRepository
+    private lateinit var adapter: GroupAdapter
     private lateinit var btnOpenListener: Button
     private lateinit var btnClear: Button
 
@@ -28,11 +27,9 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        repository = StatsRepository(AppDatabase.getDatabase(applicationContext).messageDao())
 
-        viewModel = ViewModelProvider(this, StatsViewModel.Factory(application as Application))
-            .get(StatsViewModel::class.java)
-
-        adapter = StatsAdapter()
+        adapter = GroupAdapter { group -> openMembers(group) }
         findViewById<RecyclerView>(R.id.recyclerViewStats).apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
             this.adapter = this@MainActivity.adapter
@@ -44,29 +41,32 @@ class MainActivity : AppCompatActivity() {
         btnOpenListener.setOnClickListener {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         }
-
         btnClear.setOnClickListener {
-            viewModel.clear()
+            lifecycleScope.launch { repository.clear() }
         }
 
         lifecycleScope.launch {
-            viewModel.stats.collectLatest { statsList: List<StatsRow> ->
-                adapter.submitList(statsList)
-            }
+            repository.groupsFlow().collectLatest { adapter.submitList(it) }
         }
     }
 
     override fun onResume() {
         super.onResume()
-        updateListenerButton()
-    }
-
-    private fun updateListenerButton() {
-        val enabled = WeChatNotificationListener.isEnabled(this)
-        btnOpenListener.text = if (enabled) {
+        btnOpenListener.text = if (WeChatNotificationListener.isEnabled(this)) {
             getString(R.string.listener_enabled)
         } else {
             getString(R.string.btn_open_listener)
         }
+    }
+
+    private fun openMembers(group: GroupRow) {
+        startActivity(
+            Intent(this, MemberListActivity::class.java).putExtra(EXTRA_GROUP_NAME, group.groupName)
+        )
+    }
+
+    companion object {
+        const val EXTRA_GROUP_NAME = "extra_group_name"
+        const val EXTRA_SENDER = "extra_sender"
     }
 }

@@ -21,6 +21,16 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".MemberListActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity" />
+
+        <activity
+            android:name=".MessageListActivity"
+            android:exported="false"
+            android:parentActivityName=".MemberListActivity" />
+
         <service
             android:name=".WeChatNotificationListener"
             android:exported="false"

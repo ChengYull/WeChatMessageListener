@@ -5,6 +5,14 @@
     android:orientation="vertical"
     android:padding="16dp">
 
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:text="@string/group_list_hint"
+        android:textColor="#666666"
+        android:textSize="13sp" />
+
     <Button
         android:id="@+id/btnOpenListener"
         android:layout_width="match_parent"
