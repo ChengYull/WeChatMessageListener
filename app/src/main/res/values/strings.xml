@@ -5,4 +5,12 @@
     <string name="btn_clear">清空统计</string>
     <string name="group_list_hint">点击群聊查看成员统计，再点击成员查看消息明细</string>
     <string name="chip_all">全部</string>
+    <string name="menu_delete">删除</string>
+    <string name="menu_export">导出</string>
+    <string name="dialog_delete_title">确认删除</string>
+    <string name="dialog_delete_message">确定删除所选统计数据？此操作不可恢复。</string>
+    <string name="dialog_confirm">确定</string>
+    <string name="dialog_cancel">取消</string>
+    <string name="export_success">导出成功</string>
+    <string name="export_fail">导出失败</string>
 </resources>

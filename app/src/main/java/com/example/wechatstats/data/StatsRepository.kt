@@ -18,4 +18,21 @@ class StatsRepository(private val dao: MessageDao) {
 
     suspend fun insert(record: MessageRecord) = dao.insert(record)
     suspend fun clear() = dao.clear()
+
+    suspend fun deleteGroup(groupName: String) = dao.deleteGroup(groupName)
+    suspend fun deleteGroup(groupName: String, dayStart: Long, dayEnd: Long) =
+        dao.deleteGroup(groupName, dayStart, dayEnd)
+    suspend fun deleteSender(groupName: String, sender: String) =
+        dao.deleteSender(groupName, sender)
+    suspend fun deleteSender(groupName: String, sender: String, dayStart: Long, dayEnd: Long) =
+        dao.deleteSender(groupName, sender, dayStart, dayEnd)
+
+    suspend fun getGroupMessages(groupName: String): List<MessageRecord> =
+        dao.getGroupMessages(groupName)
+    suspend fun getGroupMessages(groupName: String, dayStart: Long, dayEnd: Long): List<MessageRecord> =
+        dao.getGroupMessages(groupName, dayStart, dayEnd)
+    suspend fun getSenderMessages(groupName: String, sender: String): List<MessageRecord> =
+        dao.getSenderMessages(groupName, sender)
+    suspend fun getSenderMessages(groupName: String, sender: String, dayStart: Long, dayEnd: Long): List<MessageRecord> =
+        dao.getSenderMessages(groupName, sender, dayStart, dayEnd)
 }
