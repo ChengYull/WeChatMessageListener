@@ -34,17 +34,21 @@ Windows 主机，bash shell——使用 `./gradlew`（Unix 脚本）而非 `grad
 
 源码位于 `app/src/main/java/com/example/wechatstats/`：
 
-- `WeChatNotificationListener.kt`——`NotificationListenerService` 子类。`onNotificationPosted` 中过滤 `com.tencent.mm`，跳过 `FLAG_GROUP_SUMMARY` 折叠汇总通知与形如"X 等 N 条新消息"的标题，从 `notification.extras` 取 `EXTRA_TITLE`（发言人）与 `EXTRA_TEXT`/`EXTRA_BIG_TEXT`（内容）。用 `SHA-256(sender|text|秒级 postTime)` 作为 `notificationKey` 去重，通过 `Dispatchers.IO` 协程作用域入库。`companion object.isEnabled(context)` 反射 `Settings.Secure` 的 `enabled_notification_listeners` 判断本服务是否已授权。
+- `WeChatNotificationListener.kt`——`NotificationListenerService` 子类。`onNotificationPosted` 中过滤 `com.tencent.mm`，跳过 `FLAG_GROUP_SUMMARY` 折叠汇总通知与形如"X 等 N 条新消息"的标题，从 `notification.extras` 取 `EXTRA_TITLE`（群名）与 `EXTRA_TEXT`/`EXTRA_BIG_TEXT`（内容），优先走 `MessagingStyle` 解析每条消息的独立 sender。用 `SHA-256(groupName|sender|text|秒级 postTime)` 作为 `notificationKey` 去重，通过 `Dispatchers.IO` 协程作用域入库。`companion object.isEnabled(context)` 反射 `Settings.Secure` 的 `enabled_notification_listeners` 判断本服务是否已授权。
+- `DateAdapter.kt`——水平日期 Chip 条适配器。展示最近 14 天 + "全部"选项，选中项高亮，切换时回调通知 Activity 更新数据源。
+- `data/DateUtils.kt`——日期工具类。基于 `java.time.LocalDate` 计算当天起止毫秒、最近 N 天列表、格式化（今天/昨天/前天/MM-dd）。
 - `data/MessageRecord.kt`——Room 实体，`notificationKey` 上建唯一索引用于 insert-ignore 去重。
-- `data/MessageDao.kt`——`insert`（IGNORE 冲突策略）、`statsFlow()`（按 sender 聚合 + 计数降序的 `Flow<List<StatsRow>>`）、`clear()`。
+- `data/MessageDao.kt`——`insert`（IGNORE 冲突策略）、全量/按天 `groupsFlow()`（群聚合）、`membersFlow()`（成员聚合）、`messagesFlow()`（消息明细）、`clear()`。按天方法通过 `WHERE timestamp >= :dayStart AND timestamp < :dayEnd` 过滤。
 - `data/AppDatabase.kt`——Room 单例，db 名 `wechat_stats_db`。
-- `data/StatsRepository.kt`——DAO 薄封装。
-- `data/StatsRow.kt`——聚合查询结果 POJO（`nickname` + `count`）。
-- `ui/StatsViewModel.kt`——`AndroidViewModel`，`statsFlow` 经 `stateIn` 转为 `StateFlow`，提供 `clear()`。
-- `MainActivity.kt`——RecyclerView 排行榜，`lifecycleScope` 收集 `StateFlow`；`FLAG_KEEP_SCREEN_ON`；按钮跳转 `Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS`；`onResume` 时根据授权状态切换按钮文案。
-- `StatsAdapter.kt`——`ListAdapter<StatsRow, ...>` + DiffUtil。
+- `data/StatsRepository.kt`——DAO 薄封装，透传全量与按天重载方法。
+- `data/GroupRow.kt`——群聚合查询结果 POJO（`groupName` + `count`）。
+- `data/StatsRow.kt`——成员聚合查询结果 POJO（`nickname` + `count`）。
+- `MainActivity.kt`——群列表。`lifecycleScope` 收集 `groupsFlow`；`FLAG_KEEP_SCREEN_ON`；顶部日期 Chip 条用于切换按天/全量统计；按钮跳转 `Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS`；`onResume` 时根据授权状态切换按钮文案。
+- `MemberListActivity.kt`——成员排行。接收 `EXTRA_GROUP_NAME` + 可选 `EXTRA_DAY_START/END`，按日期过滤成员发言排行。
+- `MessageListActivity.kt`——消息明细。接收 `EXTRA_GROUP_NAME` + `EXTRA_SENDER` + 可选日期范围，按日期过滤消息。
+- `Adapters.kt`——`GroupAdapter`、`MemberAdapter`、`MessageAdapter` 三个 `ListAdapter<...>` + DiffUtil。
 
-Manifest 注册 `MainActivity`（LAUNCHER）与带 `BIND_NOTIFICATION_LISTENER_SERVICE` 权限的 `<service>`。**不**包含任何 AccessibilityService 配置、`POST_NOTIFICATIONS`、前台服务权限。
+Manifest 注册 `MainActivity`（LAUNCHER）与带 `BIND_NOTIFICATION_LISTENER_SERVICE` 权限的 `<service>`。各 Activity 通过 `parentActivityName` 声明层级关系，通过 `onSupportNavigateUp()` 重写保证返回导航正确。**不**包含任何 AccessibilityService 配置、`POST_NOTIFICATIONS`、前台服务权限。
 
 ## 已知局限
 

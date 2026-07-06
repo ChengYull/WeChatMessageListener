@@ -18,6 +18,7 @@
 - 群列表：按群名分组，显示各群消息总数
 - 成员排行：进入某群后显示成员及其发言次数（降序）
 - 消息明细：点击成员查看其全部消息内容与时间
+- 按天统计：日期 Chip 条切换（最近 14 天），支持查看每日独立统计，也可切回"全部"查看全量累计数据
 - 实时刷新：基于 Room `Flow`，新消息入库即更新 UI
 - 一键开启通知监听权限、清空统计
 
@@ -49,19 +50,22 @@ app/build/outputs/apk/debug/app-debug.apk
 3. 返回应用，按钮文案应变为"通知监听已开启"。
 4. 确保目标群聊在微信内的通知处于开启状态。
 5. 群内有新消息时，应用排行榜自动刷新。
+6. 默认显示全量统计；点击顶部日期 Chip 条可按天查看每日独立排行，点击"全部"切回累计数据。
 
 ## 项目结构
 
 ```
 app/src/main/java/com/example/wechatstats/
-├── MainActivity.kt                  # 群列表界面
+├── MainActivity.kt                  # 群列表界面（含日期 Chip 条）
 ├── MemberListActivity.kt            # 群成员排行界面
 ├── MessageListActivity.kt           # 成员消息明细界面
 ├── Adapters.kt                      # Group/Member/Message 三个 ListAdapter
+├── DateAdapter.kt                   # 日期 Chip 条适配器
 ├── WeChatNotificationListener.kt    # NotificationListenerService 核心解析
 └── data/
-    ├── MessageRecord.kt             # Room 实体 (含 groupName/sender/text)
-    ├── MessageDao.kt                # groupsFlow/membersFlow/messagesFlow
+    ├── DateUtils.kt                 # 日期工具类（起止毫秒、格式化等）
+    ├── MessageRecord.kt             # Room 实体 (含 groupName/sender/text/timestamp)
+    ├── MessageDao.kt                # groupsFlow/membersFlow/messagesFlow（含按天过滤重载）
     ├── AppDatabase.kt               # Room 单例
     ├── StatsRepository.kt           # DAO 封装
     ├── GroupRow.kt                  # 群聚合结果 POJO
