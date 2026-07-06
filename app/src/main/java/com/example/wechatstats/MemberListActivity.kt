@@ -17,12 +17,16 @@ class MemberListActivity : AppCompatActivity() {
     private lateinit var repository: StatsRepository
     private lateinit var adapter: MemberAdapter
     private lateinit var groupName: String
+    private var dayStart: Long = -1L
+    private var dayEnd: Long = -1L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_list)
 
         groupName = intent.getStringExtra(MainActivity.EXTRA_GROUP_NAME).orEmpty()
+        dayStart = intent.getLongExtra(MainActivity.EXTRA_DAY_START, -1L)
+        dayEnd = intent.getLongExtra(MainActivity.EXTRA_DAY_END, -1L)
         title = groupName
 
         repository = StatsRepository(AppDatabase.getDatabase(applicationContext).messageDao())
@@ -34,7 +38,9 @@ class MemberListActivity : AppCompatActivity() {
         }
 
         lifecycleScope.launch {
-            repository.membersFlow(groupName).collectLatest { adapter.submitList(it) }
+            val flow = if (dayStart == -1L) repository.membersFlow(groupName)
+            else repository.membersFlow(groupName, dayStart, dayEnd)
+            flow.collectLatest { adapter.submitList(it) }
         }
     }
 
@@ -43,6 +49,8 @@ class MemberListActivity : AppCompatActivity() {
             Intent(this, MessageListActivity::class.java)
                 .putExtra(MainActivity.EXTRA_GROUP_NAME, groupName)
                 .putExtra(MainActivity.EXTRA_SENDER, member.nickname)
+                .putExtra(MainActivity.EXTRA_DAY_START, dayStart)
+                .putExtra(MainActivity.EXTRA_DAY_END, dayEnd)
         )
     }
 }

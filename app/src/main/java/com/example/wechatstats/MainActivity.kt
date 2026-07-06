@@ -10,8 +10,11 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.wechatstats.data.AppDatabase
+import com.example.wechatstats.data.DateUtils
 import com.example.wechatstats.data.GroupRow
 import com.example.wechatstats.data.StatsRepository
+import kotlinx.coroutines.Job
+import java.time.LocalDate
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -21,6 +24,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adapter: GroupAdapter
     private lateinit var btnOpenListener: Button
     private lateinit var btnClear: Button
+    private lateinit var dateAdapter: DateAdapter
+
+    private var groupsJob: Job? = null
+    private var selectedDayStart: Long = -1L
+    private var selectedDayEnd: Long = -1L
+    private var useAllTime: Boolean = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,9 +54,24 @@ class MainActivity : AppCompatActivity() {
             lifecycleScope.launch { repository.clear() }
         }
 
-        lifecycleScope.launch {
-            repository.groupsFlow().collectLatest { adapter.submitList(it) }
+        // 日期 Chip 条
+        val dates = listOf<LocalDate?>(null) + DateUtils.recentDates()
+        dateAdapter = DateAdapter(dates, 0) { _, date ->
+            if (date == null) {
+                useAllTime = true
+            } else {
+                useAllTime = false
+                selectedDayStart = DateUtils.dayStartMillis(date)
+                selectedDayEnd = DateUtils.dayEndMillis(date)
+            }
+            launchGroupsFlow()
         }
+        findViewById<RecyclerView>(R.id.dateChipStrip).apply {
+            layoutManager = LinearLayoutManager(this@MainActivity, LinearLayoutManager.HORIZONTAL, false)
+            adapter = this@MainActivity.dateAdapter
+        }
+
+        launchGroupsFlow()
     }
 
     override fun onResume() {
@@ -59,14 +83,28 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun launchGroupsFlow() {
+        groupsJob?.cancel()
+        groupsJob = lifecycleScope.launch {
+            val flow = if (useAllTime) repository.groupsFlow()
+            else repository.groupsFlow(selectedDayStart, selectedDayEnd)
+            flow.collectLatest { adapter.submitList(it) }
+        }
+    }
+
     private fun openMembers(group: GroupRow) {
         startActivity(
-            Intent(this, MemberListActivity::class.java).putExtra(EXTRA_GROUP_NAME, group.groupName)
+            Intent(this, MemberListActivity::class.java)
+                .putExtra(EXTRA_GROUP_NAME, group.groupName)
+                .putExtra(EXTRA_DAY_START, if (useAllTime) -1L else selectedDayStart)
+                .putExtra(EXTRA_DAY_END, if (useAllTime) -1L else selectedDayEnd)
         )
     }
 
     companion object {
         const val EXTRA_GROUP_NAME = "extra_group_name"
         const val EXTRA_SENDER = "extra_sender"
+        const val EXTRA_DAY_START = "extra_day_start"
+        const val EXTRA_DAY_END = "extra_day_end"
     }
 }

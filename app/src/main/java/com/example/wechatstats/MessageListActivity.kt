@@ -14,6 +14,8 @@ class MessageListActivity : AppCompatActivity() {
 
     private lateinit var repository: StatsRepository
     private lateinit var adapter: MessageAdapter
+    private var dayStart: Long = -1L
+    private var dayEnd: Long = -1L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -21,6 +23,8 @@ class MessageListActivity : AppCompatActivity() {
 
         val groupName = intent.getStringExtra(MainActivity.EXTRA_GROUP_NAME).orEmpty()
         val sender = intent.getStringExtra(MainActivity.EXTRA_SENDER).orEmpty()
+        dayStart = intent.getLongExtra(MainActivity.EXTRA_DAY_START, -1L)
+        dayEnd = intent.getLongExtra(MainActivity.EXTRA_DAY_END, -1L)
         title = "$groupName · $sender"
 
         repository = StatsRepository(AppDatabase.getDatabase(applicationContext).messageDao())
@@ -32,7 +36,9 @@ class MessageListActivity : AppCompatActivity() {
         }
 
         lifecycleScope.launch {
-            repository.messagesFlow(groupName, sender).collectLatest { adapter.submitList(it) }
+            val flow = if (dayStart == -1L) repository.messagesFlow(groupName, sender)
+            else repository.messagesFlow(groupName, sender, dayStart, dayEnd)
+            flow.collectLatest { adapter.submitList(it) }
         }
     }
 }
