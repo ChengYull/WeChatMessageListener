@@ -62,8 +62,14 @@ class WeChatNotificationListener : NotificationListenerService() {
         if (parsed.hasSenderPrefix) {
             saveRecord(groupName, parsed.sender, parsed.text, sbn.postTime)
         } else {
-            // 私聊：标题即对方昵称，文本是消息内容
-            saveRecord(groupName, title, rawText.trim(), sbn.postTime)
+            // 检查是否为撤回消息，提取撤回者昵称
+            val recallSender = parseRecallSender(rawText)
+            if (recallSender != null) {
+                saveRecord(groupName, recallSender, parsed.text, sbn.postTime)
+            } else {
+                // 私聊：标题即对方昵称，文本是消息内容
+                saveRecord(groupName, title, rawText.trim(), sbn.postTime)
+            }
         }
     }
 
@@ -85,6 +91,13 @@ class WeChatNotificationListener : NotificationListenerService() {
 
     private fun isSummaryTitle(title: String): Boolean {
         return title.contains("条新消息")
+    }
+
+    /** 检测撤回消息格式（形如 "Leo"撤回了一条消息 或 「Leo」撤回了一条消息），返回撤回者昵称，否则 null */
+    private fun parseRecallSender(text: String): String? {
+        // 匹配 "昵称" 或 「昵称」后跟"撤回"二字
+        val recallMatch = Regex("""[""「]([^""」]+)[""」]\s*撤回""").find(text.trim())
+        return recallMatch?.groupValues?.getOrNull(1)?.trim()?.takeIf { it.isNotEmpty() }
     }
 
     private fun saveRecord(groupName: String, sender: String, text: String, postTime: Long) {
