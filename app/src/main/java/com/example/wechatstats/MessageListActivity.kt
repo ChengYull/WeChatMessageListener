@@ -17,9 +17,15 @@ class MessageListActivity : AppCompatActivity() {
     private var dayStart: Long = -1L
     private var dayEnd: Long = -1L
 
+    override fun onSupportNavigateUp(): Boolean {
+        onBackPressedDispatcher.onBackPressed()
+        return true
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_list)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         val groupName = intent.getStringExtra(MainActivity.EXTRA_GROUP_NAME).orEmpty()
         val sender = intent.getStringExtra(MainActivity.EXTRA_SENDER).orEmpty()

@@ -23,6 +23,7 @@ class MemberListActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_list)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         groupName = intent.getStringExtra(MainActivity.EXTRA_GROUP_NAME).orEmpty()
         dayStart = intent.getLongExtra(MainActivity.EXTRA_DAY_START, -1L)
@@ -42,6 +43,11 @@ class MemberListActivity : AppCompatActivity() {
             else repository.membersFlow(groupName, dayStart, dayEnd)
             flow.collectLatest { adapter.submitList(it) }
         }
+    }
+
+    override fun onSupportNavigateUp(): Boolean {
+        onBackPressedDispatcher.onBackPressed()
+        return true
     }
 
     private fun openMessages(member: StatsRow) {
