@@ -19,6 +19,7 @@
 - 成员排行：进入某群后显示成员及其发言次数（降序）
 - 消息明细：点击成员查看其全部消息内容与时间
 - 按天统计：日期 Chip 条切换（最近 14 天），支持查看每日独立统计，也可切回"全部"查看全量累计数据
+- 发言曲线图：选中某日后，以 5 分钟为粒度展示发言频次折线图（支持触摸查看具体数值），覆盖主页/群聊/个人三级
 - 实时刷新：基于 Room `Flow`，新消息入库即更新 UI
 - 一键开启通知监听权限、清空统计
 
@@ -56,20 +57,22 @@ app/build/outputs/apk/debug/app-debug.apk
 
 ```
 app/src/main/java/com/example/wechatstats/
-├── MainActivity.kt                  # 群列表界面（含日期 Chip 条）
-├── MemberListActivity.kt            # 群成员排行界面
-├── MessageListActivity.kt           # 成员消息明细界面
+├── MainActivity.kt                  # 群列表界面（含日期 Chip 条 + 全部群合计曲线图）
+├── MemberListActivity.kt            # 群成员排行界面（含该群发言曲线图）
+├── MessageListActivity.kt           # 成员消息明细界面（含该用户发言曲线图）
 ├── Adapters.kt                      # Group/Member/Message 三个 ListAdapter
 ├── DateAdapter.kt                   # 日期 Chip 条适配器
+├── StatsChartView.kt                # 自定义 Canvas 曲线图 View（零外部依赖）
 ├── WeChatNotificationListener.kt    # NotificationListenerService 核心解析
 └── data/
     ├── DateUtils.kt                 # 日期工具类（起止毫秒、格式化等）
     ├── MessageRecord.kt             # Room 实体 (含 groupName/sender/text/timestamp)
-    ├── MessageDao.kt                # groupsFlow/membersFlow/messagesFlow（含按天过滤重载）
+    ├── MessageDao.kt                # groupsFlow/membersFlow/messagesFlow/chartFlow（含按天过滤重载）
     ├── AppDatabase.kt               # Room 单例
     ├── StatsRepository.kt           # DAO 封装
     ├── GroupRow.kt                  # 群聚合结果 POJO
-    └── StatsRow.kt                  # 成员聚合结果 POJO
+    ├── StatsRow.kt                  # 成员聚合结果 POJO
+    └── ChartPoint.kt                # 5 分钟分桶 POJO（bucketStartMillis + count）
 ```
 
 ## 已知局限
