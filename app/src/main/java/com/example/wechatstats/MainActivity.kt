@@ -27,9 +27,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var dateAdapter: DateAdapter
 
     private var groupsJob: Job? = null
+    private var chartJob: Job? = null
     private var selectedDayStart: Long = -1L
     private var selectedDayEnd: Long = -1L
     private var useAllTime: Boolean = true
+    private var lastBuildDate: LocalDate? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,23 +57,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         // 日期 Chip 条
-        val dates = listOf<LocalDate?>(null) + DateUtils.recentDates()
-        dateAdapter = DateAdapter(dates, 0) { _, date ->
-            if (date == null) {
-                useAllTime = true
-            } else {
-                useAllTime = false
-                selectedDayStart = DateUtils.dayStartMillis(date)
-                selectedDayEnd = DateUtils.dayEndMillis(date)
-            }
-            launchGroupsFlow()
-        }
-        findViewById<RecyclerView>(R.id.dateChipStrip).apply {
-            layoutManager = LinearLayoutManager(this@MainActivity, LinearLayoutManager.HORIZONTAL, false)
-            adapter = this@MainActivity.dateAdapter
-        }
-
+        lastBuildDate = DateUtils.today()
+        buildDateChips()
         launchGroupsFlow()
+        loadChart()
     }
 
     override fun onResume() {
@@ -81,6 +70,37 @@ class MainActivity : AppCompatActivity() {
         } else {
             getString(R.string.btn_open_listener)
         }
+        // 跨过 0 点后刷新日期 Chip
+        val today = DateUtils.today()
+        if (lastBuildDate != today) {
+            lastBuildDate = today
+            buildDateChips()
+            launchGroupsFlow()
+            loadChart()
+        }
+    }
+
+    private fun buildDateChips() {
+        val dates = listOf<LocalDate?>(null) + DateUtils.recentDates()
+        if (::dateAdapter.isInitialized) {
+            dateAdapter.replaceDates(dates, resetSelection = true)
+        } else {
+            dateAdapter = DateAdapter(dates, 0) { _, date ->
+                if (date == null) {
+                    useAllTime = true
+                } else {
+                    useAllTime = false
+                    selectedDayStart = DateUtils.dayStartMillis(date)
+                    selectedDayEnd = DateUtils.dayEndMillis(date)
+                }
+                launchGroupsFlow()
+                loadChart()
+            }
+        }
+        findViewById<RecyclerView>(R.id.dateChipStrip).apply {
+            layoutManager = LinearLayoutManager(this@MainActivity, LinearLayoutManager.HORIZONTAL, false)
+            adapter = this@MainActivity.dateAdapter
+        }
     }
 
     private fun launchGroupsFlow() {
@@ -89,6 +109,22 @@ class MainActivity : AppCompatActivity() {
             val flow = if (useAllTime) repository.groupsFlow()
             else repository.groupsFlow(selectedDayStart, selectedDayEnd)
             flow.collectLatest { adapter.submitList(it) }
+        }
+    }
+
+    private fun loadChart() {
+        chartJob?.cancel()
+        val chart = findViewById<StatsChartView>(R.id.mainChart) ?: return
+        if (useAllTime) {
+            chart.visibility = android.view.View.GONE
+            return
+        }
+        chart.visibility = android.view.View.VISIBLE
+        chartJob = lifecycleScope.launch {
+            repository.chartFlow(selectedDayStart, selectedDayEnd)
+                .collectLatest { points ->
+                    chart.setData(points, selectedDayStart, selectedDayEnd)
+                }
         }
     }
 

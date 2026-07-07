@@ -34,9 +34,17 @@
         android:orientation="horizontal"
         android:nestedScrollingEnabled="false" />
 
+    <com.example.wechatstats.StatsChartView
+        android:id="@+id/mainChart"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:layout_marginTop="8dp"
+        android:visibility="gone" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerViewStats"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:layout_marginTop="16dp" />
 </LinearLayout>

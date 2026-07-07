@@ -10,10 +10,18 @@ import com.example.wechatstats.data.DateUtils
 import java.time.LocalDate
 
 class DateAdapter(
-    private val dates: List<LocalDate?>,
+    private var dates: List<LocalDate?>,
     private var selectedIndex: Int = 0,
     private val onDateSelected: (Int, LocalDate?) -> Unit
 ) : RecyclerView.Adapter<DateAdapter.VH>() {
+
+    fun replaceDates(newDates: List<LocalDate?>, resetSelection: Boolean = false) {
+        dates = newDates
+        if (resetSelection) {
+            selectedIndex = 0
+        }
+        notifyDataSetChanged()
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
         val view = LayoutInflater.from(parent.context)

@@ -78,6 +78,43 @@ interface MessageDao {
     )
     fun messagesFlow(groupName: String, sender: String, dayStart: Long, dayEnd: Long): Flow<List<MessageRecord>>
 
+    // ── 5 分钟发言频次曲线 ──
+
+    @Query(
+        """
+        SELECT (timestamp / 300000) * 300000 AS bucketStartMillis, COUNT(*) AS count
+        FROM message_record
+        WHERE timestamp >= :dayStart AND timestamp < :dayEnd
+        GROUP BY bucketStartMillis
+        ORDER BY bucketStartMillis ASC
+        """
+    )
+    fun chartFlow(dayStart: Long, dayEnd: Long): Flow<List<ChartPoint>>
+
+    @Query(
+        """
+        SELECT (timestamp / 300000) * 300000 AS bucketStartMillis, COUNT(*) AS count
+        FROM message_record
+        WHERE timestamp >= :dayStart AND timestamp < :dayEnd
+          AND groupName = :groupName
+        GROUP BY bucketStartMillis
+        ORDER BY bucketStartMillis ASC
+        """
+    )
+    fun chartFlow(dayStart: Long, dayEnd: Long, groupName: String): Flow<List<ChartPoint>>
+
+    @Query(
+        """
+        SELECT (timestamp / 300000) * 300000 AS bucketStartMillis, COUNT(*) AS count
+        FROM message_record
+        WHERE timestamp >= :dayStart AND timestamp < :dayEnd
+          AND groupName = :groupName AND sender = :sender
+        GROUP BY bucketStartMillis
+        ORDER BY bucketStartMillis ASC
+        """
+    )
+    fun chartFlow(dayStart: Long, dayEnd: Long, groupName: String, sender: String): Flow<List<ChartPoint>>
+
     @Query("DELETE FROM message_record")
     suspend fun clear()
 

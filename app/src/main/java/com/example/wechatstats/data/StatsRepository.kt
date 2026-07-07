@@ -16,6 +16,15 @@ class StatsRepository(private val dao: MessageDao) {
     fun messagesFlow(groupName: String, sender: String, dayStart: Long, dayEnd: Long): Flow<List<MessageRecord>> =
         dao.messagesFlow(groupName, sender, dayStart, dayEnd)
 
+    fun chartFlow(dayStart: Long, dayEnd: Long): Flow<List<ChartPoint>> =
+        dao.chartFlow(dayStart, dayEnd)
+
+    fun chartFlow(dayStart: Long, dayEnd: Long, groupName: String): Flow<List<ChartPoint>> =
+        dao.chartFlow(dayStart, dayEnd, groupName)
+
+    fun chartFlow(dayStart: Long, dayEnd: Long, groupName: String, sender: String): Flow<List<ChartPoint>> =
+        dao.chartFlow(dayStart, dayEnd, groupName, sender)
+
     suspend fun insert(record: MessageRecord) = dao.insert(record)
     suspend fun clear() = dao.clear()
 

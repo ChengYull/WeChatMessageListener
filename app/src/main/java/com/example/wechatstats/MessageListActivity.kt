@@ -9,7 +9,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.wechatstats.data.AppDatabase
 import com.example.wechatstats.data.ExportUtils
+import com.example.wechatstats.data.ChartPoint
 import com.example.wechatstats.data.StatsRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -21,6 +23,7 @@ class MessageListActivity : AppCompatActivity() {
     private lateinit var sender: String
     private var dayStart: Long = -1L
     private var dayEnd: Long = -1L
+    private var chartJob: Job? = null
 
     override fun onSupportNavigateUp(): Boolean {
         onBackPressedDispatcher.onBackPressed()
@@ -50,6 +53,24 @@ class MessageListActivity : AppCompatActivity() {
             val flow = if (dayStart == -1L) repository.messagesFlow(groupName, sender)
             else repository.messagesFlow(groupName, sender, dayStart, dayEnd)
             flow.collectLatest { adapter.submitList(it) }
+        }
+
+        loadChart()
+    }
+
+    private fun loadChart() {
+        val chart = findViewById<StatsChartView>(R.id.detailChart) ?: return
+        if (dayStart == -1L) {
+            chart.visibility = android.view.View.GONE
+            return
+        }
+        chart.visibility = android.view.View.VISIBLE
+        chartJob?.cancel()
+        chartJob = lifecycleScope.launch {
+            repository.chartFlow(dayStart, dayEnd, groupName, sender)
+                .collectLatest { points ->
+                    chart.setData(points, dayStart, dayEnd)
+                }
         }
     }
 
