@@ -63,6 +63,7 @@ class MainActivity : AppCompatActivity() {
                 )
                 .setPositiveButton(R.string.dialog_confirm, null)
                 .show()
+            if (useAllTime) loadHeatmap()
         }
     }
 
