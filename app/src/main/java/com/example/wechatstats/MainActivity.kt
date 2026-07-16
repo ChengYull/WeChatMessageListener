@@ -188,7 +188,6 @@ class MainActivity : AppCompatActivity() {
         val monthStart = DateUtils.dayStartMillis(currentMonth.atDay(1))
         val monthEnd = DateUtils.dayStartMillis(currentMonth.plusMonths(1).atDay(1))
 
-        // 前后各取 1 天用于颜色比较
         val queryStart = DateUtils.dayStartMillis(currentMonth.atDay(1).minusDays(1))
         val queryEnd = monthEnd
 
