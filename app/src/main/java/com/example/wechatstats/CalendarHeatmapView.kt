@@ -191,11 +191,16 @@ class CalendarHeatmapView @JvmOverloads constructor(
                 val dateStr = day.toString()
                 canvas.drawText(dateStr, cx + cellSize / 2f, cy + cellSize * 0.45f, textPaint)
 
-                // 消息数
+                // 差值（与前一天的对比）
                 countPaint.color = 0xCCFFFFFF.toInt()
                 countPaint.textSize = 9f * density
-                val countStr = if (count >= 1000) "${count / 1000}k" else count.toString()
-                canvas.drawText(countStr, cx + cellSize / 2f, cy + cellSize * 0.8f, countPaint)
+                val diffStr = if (prevCount == null || prevCount == 0) {
+                    "+$count"
+                } else {
+                    val diff = count - prevCount
+                    if (diff > 0) "+$diff" else diff.toString()
+                }
+                canvas.drawText(diffStr, cx + cellSize / 2f, cy + cellSize * 0.8f, countPaint)
             }
 
             // 今日标记：加粗边框
