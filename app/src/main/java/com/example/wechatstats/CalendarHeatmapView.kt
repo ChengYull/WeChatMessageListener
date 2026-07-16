@@ -106,7 +106,7 @@ class CalendarHeatmapView @JvmOverloads constructor(
         val totalHeight = (headerHeight + totalRows * (cellSize + cellGap) + cellGap + 24f * density).toInt()
         setMeasuredDimension(
             MeasureSpec.getSize(widthMeasureSpec),
-            totalHeight.coerceAtMost(MeasureSpec.getSize(heightMeasureSpec)).coerceAtLeast(200)
+            totalHeight.coerceAtLeast(200)
         )
     }
 
@@ -177,8 +177,8 @@ class CalendarHeatmapView @JvmOverloads constructor(
             } else {
                 // 有消息：根据比较结果着色
                 val bgColor = when {
-                    prevCount == null -> COLOR_GREEN
-                    prevCount == 0 || count > prevCount -> COLOR_RED
+                    prevCount == null || prevCount == 0 -> COLOR_RED
+                    count > prevCount -> COLOR_RED
                     count < prevCount -> COLOR_GREEN
                     else -> COLOR_GREEN // 持平
                 }
