@@ -15,11 +15,13 @@
 
 ## 功能
 
-- 群列表：按群名分组，显示各群消息总数
+- 群列表：按群名分组，显示各群消息总数；"全部"模式下显示日历热力图（按月展示每日发言频次增减趋势）
 - 成员排行：进入某群后显示成员及其发言次数（降序）
 - 消息明细：点击成员查看其全部消息内容与时间
 - 按天统计：日期 Chip 条切换（最近 14 天），支持查看每日独立统计，也可切回"全部"查看全量累计数据
-- 发言曲线图：选中某日后，以 5 分钟为粒度展示发言频次折线图（支持触摸查看具体数值），覆盖主页/群聊/个人三级
+- 发言曲线图：选中某日后，以 5 分钟为粒度展示发言频次折线图（支持触摸查看具体数值），覆盖主页/群聊/成员三级
+- 日历热力图：在"全部"模式下按月显示每日发言频次，红色=比前一天多，绿色=比前一天少，支持左右点击切换月份
+- 导入/导出：三个界面均支持 JSON 格式导入导出，导入时自动校验文件类型匹配与去重
 - 实时刷新：基于 Room `Flow`，新消息入库即更新 UI
 - 一键开启通知监听权限、清空统计
 
@@ -27,7 +29,7 @@
 
 - Android 7.0 (API 24) 及以上
 - compileSdk 36 (API 36.1)
-- AGP 9.2.1 + Kotlin (内置) + KSP 2.1.20-2.0.1 + Room 2.7.1
+- AGP 9.2.1 + Gradle 9.4.1 + Kotlin (内置) + KSP 2.1.20-2.0.1 + Room 2.7.1
 
 ## 构建与运行
 
@@ -63,6 +65,7 @@ app/src/main/java/com/example/wechatstats/
 ├── Adapters.kt                      # Group/Member/Message 三个 ListAdapter
 ├── DateAdapter.kt                   # 日期 Chip 条适配器
 ├── StatsChartView.kt                # 自定义 Canvas 曲线图 View（零外部依赖）
+├── CalendarHeatmapView.kt           # 自定义 Canvas 日历热力图 View（零外部依赖）
 ├── WeChatNotificationListener.kt    # NotificationListenerService 核心解析
 └── data/
     ├── DateUtils.kt                 # 日期工具类（起止毫秒、格式化等）
@@ -70,6 +73,8 @@ app/src/main/java/com/example/wechatstats/
     ├── MessageDao.kt                # groupsFlow/membersFlow/messagesFlow/chartFlow（含按天过滤重载）
     ├── AppDatabase.kt               # Room 单例
     ├── StatsRepository.kt           # DAO 封装
+    ├── ExportUtils.kt                # JSON 导出
+    ├── ImportUtils.kt                # JSON 导入解析（格式校验 + 界面匹配）
     ├── GroupRow.kt                  # 群聚合结果 POJO
     ├── StatsRow.kt                  # 成员聚合结果 POJO
     └── ChartPoint.kt                # 5 分钟分桶 POJO（bucketStartMillis + count）
