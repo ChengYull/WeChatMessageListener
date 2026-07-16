@@ -9,12 +9,9 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import com.example.wechatstats.data.ChartPoint
-import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
-import java.time.format.TextStyle
-import java.util.Locale
 
 class CalendarHeatmapView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
@@ -31,9 +28,7 @@ class CalendarHeatmapView @JvmOverloads constructor(
     private var labelWidth = 0f
     private var dayLabelWidth = 0f
     private var contentWidth = 0f
-    private var contentTop = 0f
     private var contentLeft = 0f
-    private var titleHeight = 0f
 
     private val cellPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val cellStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -45,7 +40,7 @@ class CalendarHeatmapView @JvmOverloads constructor(
     private val countPaint = TextPaint(Paint.ANTI_ALIAS_FLAG)
     private val headerPaint = TextPaint(Paint.ANTI_ALIAS_FLAG)
     private val emptyCellPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFFF5F5F5.toInt()
+        color = 0xFFFFFFFF.toInt()
         style = Paint.Style.FILL
     }
 
@@ -100,7 +95,6 @@ class CalendarHeatmapView @JvmOverloads constructor(
             textAlign = Paint.Align.CENTER
         }
 
-        // 计算可用宽度
         contentLeft = labelWidth + dayLabelWidth + cellGap
         contentWidth = w.toFloat() - contentLeft - cellGap
     }
@@ -135,9 +129,8 @@ class CalendarHeatmapView @JvmOverloads constructor(
         val arrowY = headerHeight - 2f * density
         canvas.drawText("<", 8f * density, arrowY, headerPaint)
         canvas.drawText(">", w - 16f * density, arrowY, headerPaint)
-        headerPaint.color = 0xFF999999.toInt()
 
-        // 星期表头
+        // 星期表头（日 一 二 三 四 五 六）
         headerPaint.textSize = 11f * density
         headerPaint.color = 0xFF999999.toInt()
         headerPaint.textAlign = Paint.Align.CENTER
@@ -151,7 +144,7 @@ class CalendarHeatmapView @JvmOverloads constructor(
         val gridTop = headerY + 8f * density
         val dayCounts = data
         val firstDay = yearMonth.atDay(1)
-        val firstDayOfWeek = getDayOfWeek(firstDay)
+        val firstDayOfWeek = getDayOfWeek(firstDay) // 0=周日
         val daysInMonth = yearMonth.lengthOfMonth()
         val today = LocalDate.now()
 
@@ -167,25 +160,32 @@ class CalendarHeatmapView @JvmOverloads constructor(
 
             val cellRect = RectF(cx, cy, cx + cellSize, cy + cellSize)
 
+            // 计算与前一天的比较
+            val prevDate = date.minusDays(1)
+            val prevDayStart = prevDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            val prevCount = dayCounts[prevDayStart]
+
             if (count == 0) {
+                // 无消息：白色背景 + 灰色边框 + 黑色日期数字
                 canvas.drawRoundRect(cellRect, cornerRadius, cornerRadius, emptyCellPaint)
                 canvas.drawRoundRect(cellRect, cornerRadius, cornerRadius, cellStrokePaint)
-            } else {
-                // 计算与前一天的比较
-                val prevDate = date.minusDays(1)
-                val prevDayStart = prevDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-                val prevCount = dayCounts[prevDayStart]
 
+                textPaint.color = 0xFF333333.toInt()
+                textPaint.textSize = 11f * density
+                val dateStr = day.toString()
+                canvas.drawText(dateStr, cx + cellSize / 2f, cy + cellSize * 0.6f, textPaint)
+            } else {
+                // 有消息：根据比较结果着色
                 val bgColor = when {
-                    prevCount == null -> COLOR_NEUTRAL
+                    prevCount == null || prevCount == 0 -> COLOR_GREEN
                     count > prevCount -> COLOR_RED
                     count < prevCount -> COLOR_GREEN
-                    else -> COLOR_NEUTRAL
+                    else -> COLOR_GREEN // 持平也视为绿色
                 }
                 cellPaint.color = bgColor
                 canvas.drawRoundRect(cellRect, cornerRadius, cornerRadius, cellPaint)
 
-                // 日期数字
+                // 日期数字（白色）
                 textPaint.color = 0xFFFFFFFF.toInt()
                 textPaint.textSize = 11f * density
                 val dateStr = day.toString()
@@ -208,7 +208,7 @@ class CalendarHeatmapView @JvmOverloads constructor(
             }
         }
 
-        // 左侧日期指示（1日所在行显示月份）
+        // 左侧日期指示
         headerPaint.textSize = 10f * density
         headerPaint.color = 0xFF999999.toInt()
         headerPaint.textAlign = Paint.Align.RIGHT
@@ -221,16 +221,15 @@ class CalendarHeatmapView @JvmOverloads constructor(
         }
     }
 
+    /** 返回 0=周日, 1=周一, ..., 6=周六 */
     private fun getDayOfWeek(date: LocalDate): Int {
-        // 返回 0=周一, 6=周日
-        return (date.dayOfWeek.value + 6) % 7
+        return date.dayOfWeek.value % 7
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.action == MotionEvent.ACTION_DOWN) {
             val y = event.y
             val x = event.x
-            // 点击标题区域：左侧上个月，右侧下个月
             if (y <= headerHeight + 16f * density) {
                 val mid = width / 2f
                 if (x < mid) {
@@ -247,8 +246,6 @@ class CalendarHeatmapView @JvmOverloads constructor(
     companion object {
         private const val COLOR_RED = 0xFFFF6B6B.toInt()
         private const val COLOR_GREEN = 0xFF81C784.toInt()
-        private const val COLOR_NEUTRAL = 0xFFFFB74D.toInt()
-        private const val COLOR_EMPTY = 0xFFF5F5F5.toInt()
-        private val WEEKDAY_LABELS = arrayOf("一", "二", "三", "四", "五", "六", "日")
+        private val WEEKDAY_LABELS = arrayOf("日", "一", "二", "三", "四", "五", "六")
     }
 }
