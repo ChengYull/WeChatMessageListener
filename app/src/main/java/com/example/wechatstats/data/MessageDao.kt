@@ -78,6 +78,19 @@ interface MessageDao {
     )
     fun messagesFlow(groupName: String, sender: String, dayStart: Long, dayEnd: Long): Flow<List<MessageRecord>>
 
+    // ── 每日统计（日历图）──
+
+    @Query(
+        """
+        SELECT (timestamp / 86400000) * 86400000 AS bucketStartMillis, COUNT(*) AS count
+        FROM message_record
+        WHERE timestamp >= :dayStart AND timestamp < :dayEnd
+        GROUP BY bucketStartMillis
+        ORDER BY bucketStartMillis ASC
+        """
+    )
+    fun dailyCountsFlow(dayStart: Long, dayEnd: Long): Flow<List<ChartPoint>>
+
     // ── 5 分钟发言频次曲线 ──
 
     @Query(

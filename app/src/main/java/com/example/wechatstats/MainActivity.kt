@@ -18,6 +18,7 @@ import com.example.wechatstats.data.ImportUtils
 import com.example.wechatstats.data.StatsRepository
 import kotlinx.coroutines.Job
 import java.time.LocalDate
+import java.time.YearMonth
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -67,6 +68,8 @@ class MainActivity : AppCompatActivity() {
 
     private var groupsJob: Job? = null
     private var chartJob: Job? = null
+    private var heatmapJob: Job? = null
+    private var currentMonth: YearMonth = YearMonth.now()
     private var selectedDayStart: Long = -1L
     private var selectedDayEnd: Long = -1L
     private var useAllTime: Boolean = true
@@ -159,15 +162,44 @@ class MainActivity : AppCompatActivity() {
     private fun loadChart() {
         chartJob?.cancel()
         val chart = findViewById<StatsChartView>(R.id.mainChart) ?: return
+        val heatmap = findViewById<CalendarHeatmapView>(R.id.calendarHeatmap) ?: return
+
         if (useAllTime) {
             chart.visibility = android.view.View.GONE
+            heatmap.visibility = android.view.View.VISIBLE
+            loadHeatmap()
             return
         }
         chart.visibility = android.view.View.VISIBLE
+        heatmap.visibility = android.view.View.GONE
         chartJob = lifecycleScope.launch {
             repository.chartFlow(selectedDayStart, selectedDayEnd)
                 .collectLatest { points ->
                     chart.setData(points, selectedDayStart, selectedDayEnd)
+                }
+        }
+    }
+
+    private fun loadHeatmap() {
+        heatmapJob?.cancel()
+        val heatmap = findViewById<CalendarHeatmapView>(R.id.calendarHeatmap) ?: return
+
+        val monthStart = DateUtils.dayStartMillis(currentMonth.atDay(1))
+        val monthEnd = DateUtils.dayStartMillis(currentMonth.plusMonths(1).atDay(1))
+
+        // 前后各取 1 天用于颜色比较
+        val queryStart = DateUtils.dayStartMillis(currentMonth.atDay(1).minusDays(1))
+        val queryEnd = monthEnd
+
+        heatmap.onMonthChange = { newMonth ->
+            currentMonth = newMonth
+            loadHeatmap()
+        }
+
+        heatmapJob = lifecycleScope.launch {
+            repository.dailyCountsFlow(queryStart, queryEnd)
+                .collectLatest { points ->
+                    heatmap.setData(points, currentMonth)
                 }
         }
     }

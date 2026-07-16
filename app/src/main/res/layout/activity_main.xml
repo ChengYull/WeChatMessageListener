@@ -48,6 +48,13 @@
         android:layout_marginTop="8dp"
         android:visibility="gone" />
 
+    <com.example.wechatstats.CalendarHeatmapView
+        android:id="@+id/calendarHeatmap"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:visibility="gone" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerViewStats"
         android:layout_width="match_parent"
