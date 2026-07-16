@@ -104,8 +104,11 @@ object ImportUtils {
             return Result.failure(ImportException("JSON 格式错误"))
         }
 
+        // 兼容旧版本导出文件（无 type 字段）
+        // 有 sender 字段 → messages 类型；只有 groupName → group 类型
         if (!root.has("type")) {
-            return Result.failure(ImportException("无法识别的导入文件：缺少类型标识"))
+            val hasSender = root.has("sender") && root.optString("sender", "").isNotEmpty()
+            root.put("type", if (hasSender) TYPE_MESSAGES else TYPE_GROUP)
         }
 
         return Result.success(root)
