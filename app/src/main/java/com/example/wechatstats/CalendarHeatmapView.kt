@@ -177,10 +177,10 @@ class CalendarHeatmapView @JvmOverloads constructor(
             } else {
                 // 有消息：根据比较结果着色
                 val bgColor = when {
-                    prevCount == null || prevCount == 0 -> COLOR_GREEN
-                    count > prevCount -> COLOR_RED
+                    prevCount == null -> COLOR_GREEN
+                    prevCount == 0 || count > prevCount -> COLOR_RED
                     count < prevCount -> COLOR_GREEN
-                    else -> COLOR_GREEN // 持平也视为绿色
+                    else -> COLOR_GREEN // 持平
                 }
                 cellPaint.color = bgColor
                 canvas.drawRoundRect(cellRect, cornerRadius, cornerRadius, cellPaint)
@@ -194,7 +194,9 @@ class CalendarHeatmapView @JvmOverloads constructor(
                 // 差值（与前一天的对比）
                 countPaint.color = 0xCCFFFFFF.toInt()
                 countPaint.textSize = 9f * density
-                val diffStr = if (prevCount == null || prevCount == 0) {
+                val diffStr = if (prevCount == null) {
+                    "+$count"
+                } else if (prevCount == 0) {
                     "+$count"
                 } else {
                     val diff = count - prevCount
