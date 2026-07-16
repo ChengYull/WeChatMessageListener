@@ -21,12 +21,12 @@ class CalendarHeatmapView @JvmOverloads constructor(
     private var yearMonth: YearMonth = YearMonth.now()
 
     private var density: Float = 1f
-    private var cellSize = 0f
-    private var cellGap = 0f
-    private var cornerRadius = 0f
-    private var headerHeight = 0f
-    private var labelWidth = 0f
-    private var dayLabelWidth = 0f
+    private var cellSize = 36f
+    private var cellGap = 4f
+    private var cornerRadius = 4f
+    private var headerHeight = 24f
+    private var labelWidth = 32f
+    private var dayLabelWidth = 20f
     private var contentWidth = 0f
     private var contentLeft = 0f
 
@@ -100,6 +100,10 @@ class CalendarHeatmapView @JvmOverloads constructor(
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        density = resources.displayMetrics.density
+        val cellSize = 36f * density
+        val cellGap = 4f * density
+        val headerHeight = 24f * density
         val firstDayOfWeek = getDayOfWeek(yearMonth.atDay(1))
         val daysInMonth = yearMonth.lengthOfMonth()
         val totalRows = ((firstDayOfWeek + daysInMonth + 6) / 7).coerceAtLeast(1)
