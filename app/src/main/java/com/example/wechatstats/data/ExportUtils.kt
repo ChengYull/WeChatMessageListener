@@ -67,6 +67,7 @@ object ExportUtils {
         messages: List<MessageRecord>
     ): String {
         val root = JSONObject()
+        root.put("type", if (sender != null) "messages" else "group")
         root.put("groupName", groupName)
         if (sender != null) root.put("sender", sender)
         root.put("dateRange", dateRangeLabel(dayStart, dayEnd))

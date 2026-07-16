@@ -5,6 +5,8 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.WindowManager
 import android.widget.Button
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -12,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.wechatstats.data.AppDatabase
 import com.example.wechatstats.data.DateUtils
 import com.example.wechatstats.data.GroupRow
+import com.example.wechatstats.data.ImportUtils
 import com.example.wechatstats.data.StatsRepository
 import kotlinx.coroutines.Job
 import java.time.LocalDate
@@ -24,7 +27,43 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adapter: GroupAdapter
     private lateinit var btnOpenListener: Button
     private lateinit var btnClear: Button
+    private lateinit var btnImport: Button
     private lateinit var dateAdapter: DateAdapter
+
+    private val importLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@registerForActivityResult
+        lifecycleScope.launch {
+            val result = ImportUtils.parseImport(
+                this@MainActivity, uri, "group"
+            )
+            if (result.isFailure) {
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle(R.string.import_fail)
+                    .setMessage(result.exceptionOrNull()?.message)
+                    .setPositiveButton(R.string.dialog_confirm, null)
+                    .show()
+                return@launch
+            }
+            val data = result.getOrThrow()
+            var inserted = 0
+            for (record in data.records) {
+                val id = repository.insert(record)
+                if (id != -1L) inserted++
+            }
+            AlertDialog.Builder(this@MainActivity)
+                .setTitle(R.string.menu_import)
+                .setMessage(
+                    getString(
+                        R.string.import_success,
+                        data.records.size,
+                        inserted,
+                        data.records.size - inserted
+                    )
+                )
+                .setPositiveButton(R.string.dialog_confirm, null)
+                .show()
+        }
+    }
 
     private var groupsJob: Job? = null
     private var chartJob: Job? = null
@@ -54,6 +93,11 @@ class MainActivity : AppCompatActivity() {
         }
         btnClear.setOnClickListener {
             lifecycleScope.launch { repository.clear() }
+        }
+
+        btnImport = findViewById(R.id.btnImport)
+        btnImport.setOnClickListener {
+            importLauncher.launch(arrayOf("application/json", "*/*"))
         }
 
         // 日期 Chip 条

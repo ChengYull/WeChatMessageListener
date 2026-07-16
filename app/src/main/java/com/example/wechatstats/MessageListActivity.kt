@@ -2,6 +2,7 @@ package com.example.wechatstats
 
 import android.content.Intent
 import android.os.Bundle
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -10,6 +11,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.wechatstats.data.AppDatabase
 import com.example.wechatstats.data.ExportUtils
 import com.example.wechatstats.data.ChartPoint
+import com.example.wechatstats.data.ImportUtils
 import com.example.wechatstats.data.StatsRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
@@ -24,6 +26,47 @@ class MessageListActivity : AppCompatActivity() {
     private var dayStart: Long = -1L
     private var dayEnd: Long = -1L
     private var chartJob: Job? = null
+
+    private val importLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@registerForActivityResult
+        lifecycleScope.launch {
+            val result = ImportUtils.parseImport(
+                this@MessageListActivity, uri, "messages",
+                expectedGroupName = groupName,
+                expectedSender = sender
+            )
+            if (result.isFailure) {
+                AlertDialog.Builder(this@MessageListActivity)
+                    .setTitle(R.string.import_fail)
+                    .setMessage(result.exceptionOrNull()?.message)
+                    .setPositiveButton(R.string.dialog_confirm, null)
+                    .show()
+                return@launch
+            }
+            val data = result.getOrThrow()
+            var inserted = 0
+            for (record in data.records) {
+                val id = repository.insert(record)
+                if (id != -1L) inserted++
+            }
+            AlertDialog.Builder(this@MessageListActivity)
+                .setTitle(R.string.menu_import)
+                .setMessage(
+                    getString(
+                        R.string.import_success,
+                        data.records.size,
+                        inserted,
+                        data.records.size - inserted
+                    )
+                )
+                .setPositiveButton(R.string.dialog_confirm, null)
+                .show()
+        }
+    }
+
+    private fun doImport() {
+        importLauncher.launch(arrayOf("application/json", "*/*"))
+    }
 
     override fun onSupportNavigateUp(): Boolean {
         onBackPressedDispatcher.onBackPressed()
@@ -81,6 +124,10 @@ class MessageListActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
         return when (item.itemId) {
+            R.id.action_import -> {
+                doImport()
+                true
+            }
             R.id.action_delete -> {
                 showDeleteConfirmDialog()
                 true

@@ -13,4 +13,8 @@
     <string name="dialog_cancel">取消</string>
     <string name="export_success">导出成功</string>
     <string name="export_fail">导出失败</string>
+    <string name="menu_import">导入</string>
+    <string name="import_success">导入成功：共 %1$d 条，新增 %2$d 条，跳过 %3$d 条重复</string>
+    <string name="import_fail">导入失败</string>
+    <string name="import_wrong_type">导入文件类型不匹配</string>
 </resources>

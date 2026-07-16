@@ -128,12 +128,15 @@ class WeChatNotificationListener : NotificationListenerService() {
         private const val TAG = "WeChatStatsListener"
         private const val WECHAT_PACKAGE = "com.tencent.mm"
 
-        private fun dedupKey(groupName: String, sender: String, text: String, postTime: Long): String {
-            val secondPrecision = postTime / 1000
-            val raw = "$groupName|$sender|$text|$secondPrecision"
+        fun computeKey(groupName: String, sender: String, text: String, postTimeSeconds: Long): String {
+            val raw = "$groupName|$sender|$text|$postTimeSeconds"
             val md = MessageDigest.getInstance("SHA-256")
             val bytes = md.digest(raw.toByteArray(Charsets.UTF_8))
             return bytes.joinToString("") { "%02x".format(it) }
+        }
+
+        private fun dedupKey(groupName: String, sender: String, text: String, postTime: Long): String {
+            return computeKey(groupName, sender, text, postTime / 1000)
         }
 
         fun isEnabled(context: Context): Boolean {
