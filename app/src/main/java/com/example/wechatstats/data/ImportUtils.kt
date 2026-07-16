@@ -8,12 +8,6 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.security.MessageDigest
 
-data class ImportResult(
-    val total: Int,
-    val inserted: Int,
-    val skipped: Int
-)
-
 object ImportUtils {
 
     private const val TYPE_GROUP = "group"
@@ -21,23 +15,85 @@ object ImportUtils {
     private const val TYPE_MESSAGES = "messages"
 
     /**
-     * 从 URI 读取并解析导入文件。
-     * @param expectedType 期望的导入类型（group/member/messages）
-     * @param expectedGroupName 期望的群名（member/messages 需要匹配）
-     * @param expectedSender 期望的发言人（messages 需要匹配）
-     * @return 解析后的记录列表 + 元数据，或错误信息
+     * 群列表页导入：接受 group 或 messages 类型。
      */
-    fun parseImport(
+    fun parseImportForGroupList(
+        context: Context,
+        uri: Uri
+    ): Result<ImportData> {
+        val root = parseJson(context, uri) ?: return Result.failure(ImportException("无法读取文件"))
+        if (root.isFailure) return Result.failure(root.exceptionOrNull()!!)
+        val json = root.getOrThrow()
+
+        val fileType = json.optString("type", "")
+        if (fileType != TYPE_GROUP && fileType != TYPE_MESSAGES) {
+            return Result.failure(ImportException("导入文件类型不匹配：请在「群聊统计」界面导入"))
+        }
+
+        return buildRecords(json)
+    }
+
+    /**
+     * 成员页导入：接受 member 或 messages 类型，需群名匹配。
+     */
+    fun parseImportForMember(
         context: Context,
         uri: Uri,
-        expectedType: String,
-        expectedGroupName: String? = null,
-        expectedSender: String? = null
+        expectedGroupName: String
     ): Result<ImportData> {
+        val root = parseJson(context, uri) ?: return Result.failure(ImportException("无法读取文件"))
+        if (root.isFailure) return Result.failure(root.exceptionOrNull()!!)
+        val json = root.getOrThrow()
+
+        val fileType = json.optString("type", "")
+        if (fileType != TYPE_MEMBER && fileType != TYPE_MESSAGES) {
+            return Result.failure(ImportException("导入文件类型不匹配：请在「成员统计」界面导入"))
+        }
+
+        val fileGroupName = json.optString("groupName", "")
+        if (fileGroupName != expectedGroupName) {
+            return Result.failure(ImportException("群名不匹配：文件来自「$fileGroupName」，当前群为「$expectedGroupName」"))
+        }
+
+        return buildRecords(json)
+    }
+
+    /**
+     * 消息页导入：接受 messages 类型，需群名+发言人匹配。
+     */
+    fun parseImportForMessage(
+        context: Context,
+        uri: Uri,
+        expectedGroupName: String,
+        expectedSender: String
+    ): Result<ImportData> {
+        val root = parseJson(context, uri) ?: return Result.failure(ImportException("无法读取文件"))
+        if (root.isFailure) return Result.failure(root.exceptionOrNull()!!)
+        val json = root.getOrThrow()
+
+        val fileType = json.optString("type", "")
+        if (fileType != TYPE_MESSAGES) {
+            return Result.failure(ImportException("导入文件类型不匹配：请在「消息明细」界面导入"))
+        }
+
+        val fileGroupName = json.optString("groupName", "")
+        if (fileGroupName != expectedGroupName) {
+            return Result.failure(ImportException("群名不匹配：文件来自「$fileGroupName」，当前群为「$expectedGroupName」"))
+        }
+
+        val fileSender = json.optString("sender", "")
+        if (fileSender != expectedSender) {
+            return Result.failure(ImportException("发言人不匹配：文件来自「$fileSender」，当前为「$expectedSender」"))
+        }
+
+        return buildRecords(json)
+    }
+
+    private fun parseJson(context: Context, uri: Uri): Result<JSONObject>? {
         val jsonText = try {
             context.contentResolver.openInputStream(uri)?.use { input ->
                 BufferedReader(InputStreamReader(input, Charsets.UTF_8)).readText()
-            } ?: return Result.failure(ImportException("无法读取文件"))
+            } ?: return null
         } catch (e: Exception) {
             return Result.failure(ImportException("读取文件失败: ${e.message}"))
         }
@@ -52,36 +108,12 @@ object ImportUtils {
             return Result.failure(ImportException("无法识别的导入文件：缺少类型标识"))
         }
 
-        val fileType = root.getString("type")
-        if (fileType != expectedType) {
-            val typeName = when (fileType) {
-                TYPE_GROUP -> "群聊统计"
-                TYPE_MEMBER -> "成员统计"
-                TYPE_MESSAGES -> "消息明细"
-                else -> "未知"
-            }
-            val expectedName = when (expectedType) {
-                TYPE_GROUP -> "群聊统计"
-                TYPE_MEMBER -> "成员统计"
-                TYPE_MESSAGES -> "消息明细"
-                else -> "未知"
-            }
-            return Result.failure(ImportException("导入文件类型不匹配：文件是「$typeName」，请在「$expectedName」界面导入"))
-        }
+        return Result.success(root)
+    }
 
-        val fileGroupName = root.optString("groupName", "")
+    private fun buildRecords(root: JSONObject): Result<ImportData> {
+        val groupName = root.optString("groupName", "")
         val fileSender = root.optString("sender", "")
-
-        // 校验群名匹配
-        if (expectedGroupName != null && fileGroupName != expectedGroupName) {
-            return Result.failure(ImportException("群名不匹配：文件来自「$fileGroupName」，当前群为「$expectedGroupName」"))
-        }
-
-        // 校验发言人匹配
-        if (expectedSender != null && fileSender != expectedSender) {
-            return Result.failure(ImportException("发言人不匹配：文件来自「$fileSender」，当前为「$expectedSender」"))
-        }
-
         val messages = root.optJSONArray("messages") ?: JSONArray()
         val records = mutableListOf<MessageRecord>()
 
@@ -90,11 +122,11 @@ object ImportUtils {
             val sender = msg.optString("sender", fileSender)
             val text = msg.optString("text", "")
             val timestamp = msg.optLong("timestamp", 0L)
-            val notificationKey = computeKey(fileGroupName, sender, text, timestamp / 1000)
+            val notificationKey = computeKey(groupName, sender, text, timestamp / 1000)
             records.add(
                 MessageRecord(
                     notificationKey = notificationKey,
-                    groupName = fileGroupName,
+                    groupName = groupName,
                     sender = sender,
                     text = text,
                     timestamp = timestamp
@@ -102,7 +134,7 @@ object ImportUtils {
             )
         }
 
-        return Result.success(ImportData(records, fileGroupName, fileSender))
+        return Result.success(ImportData(records, groupName, fileSender))
     }
 
     private fun computeKey(groupName: String, sender: String, text: String, postTimeSeconds: Long): String {

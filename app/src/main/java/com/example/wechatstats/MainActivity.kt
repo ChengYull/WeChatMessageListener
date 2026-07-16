@@ -33,8 +33,8 @@ class MainActivity : AppCompatActivity() {
     private val importLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@registerForActivityResult
         lifecycleScope.launch {
-            val result = ImportUtils.parseImport(
-                this@MainActivity, uri, "group"
+            val result = ImportUtils.parseImportForGroupList(
+                this@MainActivity, uri
             )
             if (result.isFailure) {
                 AlertDialog.Builder(this@MainActivity)

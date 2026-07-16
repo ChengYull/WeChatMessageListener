@@ -30,10 +30,8 @@ class MessageListActivity : AppCompatActivity() {
     private val importLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@registerForActivityResult
         lifecycleScope.launch {
-            val result = ImportUtils.parseImport(
-                this@MessageListActivity, uri, "messages",
-                expectedGroupName = groupName,
-                expectedSender = sender
+            val result = ImportUtils.parseImportForMessage(
+                this@MessageListActivity, uri, groupName, sender
             )
             if (result.isFailure) {
                 AlertDialog.Builder(this@MessageListActivity)

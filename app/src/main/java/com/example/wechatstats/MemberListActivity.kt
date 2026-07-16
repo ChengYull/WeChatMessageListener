@@ -73,9 +73,8 @@ class MemberListActivity : AppCompatActivity() {
     private val importLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@registerForActivityResult
         lifecycleScope.launch {
-            val result = ImportUtils.parseImport(
-                this@MemberListActivity, uri, "member",
-                expectedGroupName = groupName
+            val result = ImportUtils.parseImportForMember(
+                this@MemberListActivity, uri, groupName
             )
             if (result.isFailure) {
                 AlertDialog.Builder(this@MemberListActivity)
