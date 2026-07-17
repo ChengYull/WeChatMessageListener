@@ -11,7 +11,6 @@ import android.view.View
 import com.example.wechatstats.data.ChartPoint
 import java.time.LocalDate
 import java.time.YearMonth
-import java.time.ZoneId
 
 class CalendarHeatmapView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
@@ -100,6 +99,10 @@ class CalendarHeatmapView @JvmOverloads constructor(
 
         contentLeft = 4f * density
         contentWidth = w.toFloat() - 8f * density
+        // 计算 7 列网格总宽度，居中
+        val gridWidth = 7f * cellSize + 6f * cellGap
+        val padding = (contentWidth - gridWidth).coerceAtLeast(0f) / 2f
+        contentLeft = 4f * density + padding
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -162,14 +165,14 @@ class CalendarHeatmapView @JvmOverloads constructor(
             val cx = contentLeft + col * cellTotal
             val cy = gridTop + row * cellTotal
 
-            val dayStart = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            val dayStart = dayStartMillis(date)
             val count = dayCounts[dayStart] ?: 0
 
             val cellRect = RectF(cx, cy, cx + cellSize, cy + cellSize)
 
             // 计算与前一天的比较
             val prevDate = date.minusDays(1)
-            val prevDayStart = prevDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            val prevDayStart = dayStartMillis(prevDate)
             val prevCount = dayCounts[prevDayStart]
 
             if (count == 0) {
@@ -227,6 +230,11 @@ class CalendarHeatmapView @JvmOverloads constructor(
     /** 返回 0=周日, 1=周一, ..., 6=周六 */
     private fun getDayOfWeek(date: LocalDate): Int {
         return date.dayOfWeek.value % 7
+    }
+
+    /** 与 DAO dailyCountsFlow 中 (timestamp / 86400000) * 86400000 保持一致的 UTC 日起始 */
+    private fun dayStartMillis(date: LocalDate): Long {
+        return date.toEpochDay() * 86400000L
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
