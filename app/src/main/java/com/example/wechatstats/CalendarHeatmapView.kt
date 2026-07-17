@@ -47,6 +47,9 @@ class CalendarHeatmapView @JvmOverloads constructor(
     // 年月切换监听
     var onMonthChange: ((YearMonth) -> Unit)? = null
 
+    // 日期点击监听
+    var onDateClicked: ((LocalDate) -> Unit)? = null
+
     fun setData(points: List<ChartPoint>, yearMonth: YearMonth) {
         this.yearMonth = yearMonth
         data = points.associate { it.bucketStartMillis to it.count }
@@ -249,6 +252,21 @@ class CalendarHeatmapView @JvmOverloads constructor(
                     nextMonth()
                 }
                 return true
+            }
+            // 点击网格区域，计算对应日期
+            val cellTotal = cellSize + cellGap
+            val headerY = headerHeight + 16f * density
+            val gridTop = headerY + 8f * density
+            if (y >= gridTop && x >= contentLeft) {
+                val col = ((x - contentLeft) / cellTotal).toInt()
+                val row = ((y - gridTop) / cellTotal).toInt()
+                val firstDay = yearMonth.atDay(1)
+                val firstDayOfWeek = getDayOfWeek(firstDay)
+                val day = row * 7 + col - firstDayOfWeek + 1
+                if (day in 1..yearMonth.lengthOfMonth()) {
+                    onDateClicked?.invoke(yearMonth.atDay(day))
+                    return true
+                }
             }
         }
         return super.onTouchEvent(event)

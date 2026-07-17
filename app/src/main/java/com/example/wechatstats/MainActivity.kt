@@ -154,6 +154,14 @@ class MainActivity : AppCompatActivity() {
             loadHeatmap()
         }
 
+        heatmap.onDateClicked = { date ->
+            useAllTime = false
+            selectedDayStart = DateUtils.dayStartMillis(date)
+            selectedDayEnd = DateUtils.dayEndMillis(date)
+            launchGroupsFlow()
+            loadChart()
+        }
+
         heatmapJob = lifecycleScope.launch {
             repository.dailyCountsFlow(queryStart, queryEnd)
                 .collectLatest { points ->
