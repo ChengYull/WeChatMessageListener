@@ -28,6 +28,7 @@ class StatsChartView @JvmOverloads constructor(
     private var dayStart: Long = 0L
     private var dayEnd: Long = 0L
     private var maxCount: Int = 0
+    private var xLabelMode: Int = XLABEL_HOUR
 
     // 触摸状态
     private var touchedIndex: Int = -1
@@ -76,6 +77,7 @@ class StatsChartView @JvmOverloads constructor(
 
     // 缓存
     private val timeFmt = SimpleDateFormat("HH:mm", Locale.getDefault())
+    private val dateFmt = SimpleDateFormat("MM-dd", Locale.getDefault())
     private val labelBounds = Rect()
     private var density: Float = 1f
     private var paddingLeft = 0f
@@ -89,12 +91,13 @@ class StatsChartView @JvmOverloads constructor(
     private var chartWidth = 0f
     private var chartHeight = 0f
 
-    fun setData(points: List<ChartPoint>, start: Long, end: Long) {
+    fun setData(points: List<ChartPoint>, start: Long, end: Long, labelMode: Int = XLABEL_HOUR) {
         data = points
         dayStart = start
         dayEnd = end
         maxCount = points.maxOfOrNull { it.count } ?: 0
         touchedIndex = -1
+        xLabelMode = labelMode
         invalidate()
     }
 
@@ -151,17 +154,37 @@ class StatsChartView @JvmOverloads constructor(
                 y + labelBounds.height() / 2f, labelPaint)
         }
 
-        // ── X 轴标签（6 小时间隔）──
+        // ── X 轴标签 ──
         val duration = dayEnd - dayStart
         if (duration > 0) {
-            for (hour in 0..24 step 6) {
-                val fraction = hour / 24f
-                val x = chartLeft + chartWidth * fraction
-                val timeStr = String.format("%02d:00", hour)
-                val tw = labelPaint.measureText(timeStr)
-                canvas.drawText(timeStr, x - tw / 2f, h - 8f * density, labelPaint)
-                // 竖线标记
-                canvas.drawLine(x, chartBottom, x, chartBottom + 6f * density, axisPaint)
+            if (xLabelMode == XLABEL_HOUR) {
+                // 6 小时间隔（日折线图）
+                for (hour in 0..24 step 6) {
+                    val fraction = hour / 24f
+                    val x = chartLeft + chartWidth * fraction
+                    val timeStr = String.format("%02d:00", hour)
+                    val tw = labelPaint.measureText(timeStr)
+                    canvas.drawText(timeStr, x - tw / 2f, h - 8f * density, labelPaint)
+                    canvas.drawLine(x, chartBottom, x, chartBottom + 6f * density, axisPaint)
+                }
+            } else {
+                // 日期间隔（月折线图）
+                val dayCount = (duration / 86400000).toInt().coerceAtLeast(1)
+                val interval = when {
+                    dayCount <= 7 -> 1
+                    dayCount <= 14 -> 2
+                    dayCount <= 31 -> 5
+                    else -> 7
+                }
+                for (day in 0..dayCount step interval) {
+                    val fraction = day.toFloat() / dayCount
+                    val x = chartLeft + chartWidth * fraction
+                    val date = Date(dayStart + day * 86400000L)
+                    val dateStr = dateFmt.format(date)
+                    val tw = labelPaint.measureText(dateStr)
+                    canvas.drawText(dateStr, x - tw / 2f, h - 8f * density, labelPaint)
+                    canvas.drawLine(x, chartBottom, x, chartBottom + 6f * density, axisPaint)
+                }
             }
         }
 
@@ -214,7 +237,12 @@ class StatsChartView @JvmOverloads constructor(
             canvas.drawCircle(pt.first, pt.second, 6f * density, dotPaint)
 
             // 气泡
-            val tooltipText = "${timeFmt.format(Date(point.bucketStartMillis))}  ${point.count} 条"
+            val tooltipTime = if (xLabelMode == XLABEL_HOUR) {
+                timeFmt.format(Date(point.bucketStartMillis))
+            } else {
+                dateFmt.format(Date(point.bucketStartMillis))
+            }
+            val tooltipText = "$tooltipTime  ${point.count} 条"
             val tooltipWidth = tooltipTextPaint.measureText(tooltipText) + 16f * density
             val tooltipHeight = 28f * density
             val tooltipX: Float
@@ -281,5 +309,10 @@ class StatsChartView @JvmOverloads constructor(
             }
         }
         return super.onTouchEvent(event)
+    }
+
+    companion object {
+        const val XLABEL_HOUR = 0
+        const val XLABEL_DATE = 1
     }
 }

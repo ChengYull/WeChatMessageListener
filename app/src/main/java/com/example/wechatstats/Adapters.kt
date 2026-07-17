@@ -26,7 +26,7 @@ class GroupAdapter(private val onClick: (GroupRow) -> Unit) :
     override fun onBindViewHolder(holder: VH, position: Int) {
         val item = getItem(position)
         holder.label.text = "${position + 1}. ${item.groupName}"
-        holder.count.text = "${item.count} 条"
+        holder.count.visibility = android.view.View.GONE
         holder.itemView.setOnClickListener { onClick(item) }
     }
     class VH(view: View) : RecyclerView.ViewHolder(view) {

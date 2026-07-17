@@ -3,6 +3,8 @@ package com.example.wechatstats
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
+import android.view.Menu
+import android.view.MenuItem
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.TextView
@@ -14,6 +16,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.wechatstats.data.AppDatabase
 import com.example.wechatstats.data.DateUtils
+import com.example.wechatstats.data.ExportUtils
 import com.example.wechatstats.data.GroupRow
 import com.example.wechatstats.data.ImportUtils
 import com.example.wechatstats.data.StatsRepository
@@ -28,7 +31,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var repository: StatsRepository
     private lateinit var adapter: GroupAdapter
     private lateinit var btnOpenListener: Button
-    private lateinit var btnImport: Button
     private lateinit var btnBackToAll: Button
 
     private val importLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -90,14 +92,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         btnOpenListener = findViewById(R.id.btnOpenListener)
-        btnImport = findViewById(R.id.btnImport)
         btnBackToAll = findViewById(R.id.btnBackToAll)
 
         btnOpenListener.setOnClickListener {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-        }
-        btnImport.setOnClickListener {
-            importLauncher.launch(arrayOf("application/json", "*/*"))
         }
         btnBackToAll.setOnClickListener {
             useAllTime = true
@@ -115,6 +113,25 @@ class MainActivity : AppCompatActivity() {
             getString(R.string.listener_enabled)
         } else {
             getString(R.string.btn_open_listener)
+        }
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.menu_delete_export, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_import -> {
+                importLauncher.launch(arrayOf("application/json", "*/*"))
+                true
+            }
+            R.id.action_export -> {
+                doExport()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
         }
     }
 
@@ -178,7 +195,7 @@ class MainActivity : AppCompatActivity() {
                 .collectLatest { points ->
                     val total = points.sumOf { it.count }
                     tvMonthTotal?.text = "${currentMonth.monthValue}月 共 $total 条消息"
-                    monthChart?.setData(points, monthStart, monthEnd)
+                    monthChart?.setData(points, monthStart, monthEnd, StatsChartView.XLABEL_DATE)
                 }
         }
 
@@ -200,6 +217,34 @@ class MainActivity : AppCompatActivity() {
                 .collectLatest { points ->
                     heatmap.setData(points, currentMonth)
                 }
+        }
+    }
+
+    private fun doExport() {
+        lifecycleScope.launch {
+            val allMessages = if (useAllTime) {
+                repository.getAllMessages()
+            } else {
+                repository.getAllMessages(selectedDayStart, selectedDayEnd)
+            }
+            val uri = ExportUtils.exportGroup(
+                this@MainActivity, "全部群聊", allMessages,
+                if (useAllTime) -1L else selectedDayStart,
+                if (useAllTime) -1L else selectedDayEnd
+            )
+            if (uri != null) {
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "application/json"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                startActivity(Intent.createChooser(shareIntent, getString(R.string.menu_export)))
+            } else {
+                AlertDialog.Builder(this@MainActivity)
+                    .setMessage(R.string.export_fail)
+                    .setPositiveButton(R.string.dialog_confirm, null)
+                    .show()
+            }
         }
     }
 

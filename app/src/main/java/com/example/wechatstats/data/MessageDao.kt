@@ -158,4 +158,10 @@ interface MessageDao {
 
     @Query("SELECT * FROM message_record WHERE groupName = :groupName AND sender = :sender AND timestamp >= :dayStart AND timestamp < :dayEnd ORDER BY timestamp ASC")
     suspend fun getSenderMessages(groupName: String, sender: String, dayStart: Long, dayEnd: Long): List<MessageRecord>
+
+    @Query("SELECT * FROM message_record ORDER BY timestamp ASC")
+    suspend fun getAllMessages(): List<MessageRecord>
+
+    @Query("SELECT * FROM message_record WHERE timestamp >= :dayStart AND timestamp < :dayEnd ORDER BY timestamp ASC")
+    suspend fun getAllMessages(dayStart: Long, dayEnd: Long): List<MessageRecord>
 }

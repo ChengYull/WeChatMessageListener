@@ -47,4 +47,8 @@ class StatsRepository(private val dao: MessageDao) {
         dao.getSenderMessages(groupName, sender)
     suspend fun getSenderMessages(groupName: String, sender: String, dayStart: Long, dayEnd: Long): List<MessageRecord> =
         dao.getSenderMessages(groupName, sender, dayStart, dayEnd)
+
+    suspend fun getAllMessages(): List<MessageRecord> = dao.getAllMessages()
+    suspend fun getAllMessages(dayStart: Long, dayEnd: Long): List<MessageRecord> =
+        dao.getAllMessages(dayStart, dayEnd)
 }
