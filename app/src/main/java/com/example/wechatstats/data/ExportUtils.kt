@@ -78,6 +78,7 @@ object ExportUtils {
         for (m in messages) {
             val obj = JSONObject()
             obj.put("sender", m.sender)
+            obj.put("groupName", m.groupName)
             obj.put("text", m.text)
             obj.put("timestamp", m.timestamp)
             obj.put("time", TS_FMT.format(Date(m.timestamp)))

@@ -115,7 +115,7 @@ object ImportUtils {
     }
 
     private fun buildRecords(root: JSONObject): Result<ImportData> {
-        val groupName = root.optString("groupName", "")
+        val rootGroupName = root.optString("groupName", "")
         val fileSender = root.optString("sender", "")
         val messages = root.optJSONArray("messages") ?: JSONArray()
         val records = mutableListOf<MessageRecord>()
@@ -125,6 +125,8 @@ object ImportUtils {
             val sender = msg.optString("sender", fileSender)
             val text = msg.optString("text", "")
             val timestamp = msg.optLong("timestamp", 0L)
+            // 如果根层 groupName 为空，从每条消息自身读取
+            val groupName = if (rootGroupName.isEmpty()) msg.optString("groupName", "") else rootGroupName
             val notificationKey = computeKey(groupName, sender, text, timestamp / 1000)
             records.add(
                 MessageRecord(
@@ -137,7 +139,7 @@ object ImportUtils {
             )
         }
 
-        return Result.success(ImportData(records, groupName, fileSender))
+        return Result.success(ImportData(records, rootGroupName, fileSender))
     }
 
     private fun computeKey(groupName: String, sender: String, text: String, postTimeSeconds: Long): String {
