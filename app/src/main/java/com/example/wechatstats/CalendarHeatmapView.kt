@@ -222,17 +222,6 @@ class CalendarHeatmapView @JvmOverloads constructor(
             }
         }
 
-        // 左侧日期指示
-        headerPaint.textSize = 10f * density
-        headerPaint.color = 0xFF999999.toInt()
-        headerPaint.textAlign = Paint.Align.RIGHT
-        for (day in 1..daysInMonth step 7) {
-            val date = yearMonth.atDay(day)
-            val row = (firstDayOfWeek + day - 1) / 7
-            val cy = gridTop + row * cellTotal + cellSize / 2f + 4f * density
-            val label = date.dayOfMonth.toString()
-            canvas.drawText(label, contentLeft - 4f * density, cy, headerPaint)
-        }
     }
 
     /** 返回 0=周日, 1=周一, ..., 6=周六 */
