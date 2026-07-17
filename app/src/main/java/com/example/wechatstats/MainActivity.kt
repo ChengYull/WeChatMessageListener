@@ -256,19 +256,53 @@ class MainActivity : AppCompatActivity() {
             adapter.currentList.indexOf(group)
         )?.itemView
         val popup = android.widget.PopupMenu(this, anchor ?: findViewById(R.id.recyclerViewStats))
+        popup.menu.add("导出记录")
         popup.menu.add("删除记录")
-        popup.setOnMenuItemClickListener {
-            AlertDialog.Builder(this)
-                .setTitle(R.string.dialog_delete_title)
-                .setMessage("确定删除「${group.groupName}」的所有统计记录？此操作不可恢复。")
-                .setPositiveButton(R.string.dialog_confirm) { _, _ ->
+        popup.setOnMenuItemClickListener { item ->
+            when (item.title.toString()) {
+                "导出记录" -> {
                     lifecycleScope.launch {
-                        repository.deleteGroup(group.groupName)
+                        val messages = if (useAllTime) {
+                            repository.getGroupMessages(group.groupName)
+                        } else {
+                            repository.getGroupMessages(group.groupName, selectedDayStart, selectedDayEnd)
+                        }
+                        val uri = ExportUtils.exportGroup(
+                            this@MainActivity, group.groupName, messages,
+                            if (useAllTime) -1L else selectedDayStart,
+                            if (useAllTime) -1L else selectedDayEnd
+                        )
+                        if (uri != null) {
+                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "application/json"
+                                putExtra(Intent.EXTRA_STREAM, uri)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            startActivity(Intent.createChooser(shareIntent, getString(R.string.menu_export)))
+                        } else {
+                            AlertDialog.Builder(this@MainActivity)
+                                .setMessage(R.string.export_fail)
+                                .setPositiveButton(R.string.dialog_confirm, null)
+                                .show()
+                        }
                     }
+                    true
                 }
-                .setNegativeButton(R.string.dialog_cancel, null)
-                .show()
-            true
+                "删除记录" -> {
+                    AlertDialog.Builder(this)
+                        .setTitle(R.string.dialog_delete_title)
+                        .setMessage("确定删除「${group.groupName}」的所有统计记录？此操作不可恢复。")
+                        .setPositiveButton(R.string.dialog_confirm) { _, _ ->
+                            lifecycleScope.launch {
+                                repository.deleteGroup(group.groupName)
+                            }
+                        }
+                        .setNegativeButton(R.string.dialog_cancel, null)
+                        .show()
+                    true
+                }
+                else -> false
+            }
         }
         popup.show()
     }
