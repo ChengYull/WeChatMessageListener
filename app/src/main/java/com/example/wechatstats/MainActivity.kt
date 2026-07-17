@@ -117,7 +117,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.menu_delete_export, menu)
+        menuInflater.inflate(R.menu.menu_import_export, menu)
         return true
     }
 
