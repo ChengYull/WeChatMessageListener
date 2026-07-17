@@ -228,7 +228,7 @@ class MainActivity : AppCompatActivity() {
                 repository.getAllMessages(selectedDayStart, selectedDayEnd)
             }
             val uri = ExportUtils.exportGroup(
-                this@MainActivity, "全部群聊", allMessages,
+                this@MainActivity, "", allMessages,
                 if (useAllTime) -1L else selectedDayStart,
                 if (useAllTime) -1L else selectedDayEnd
             )
