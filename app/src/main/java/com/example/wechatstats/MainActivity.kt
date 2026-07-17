@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.WindowManager
 import android.widget.Button
+import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -69,6 +70,7 @@ class MainActivity : AppCompatActivity() {
     private var groupsJob: Job? = null
     private var chartJob: Job? = null
     private var heatmapJob: Job? = null
+    private var monthChartJob: Job? = null
     private var currentMonth: YearMonth = YearMonth.now()
     private var selectedDayStart: Long = DateUtils.dayStartMillis(DateUtils.today())
     private var selectedDayEnd: Long = DateUtils.dayEndMillis(DateUtils.today())
@@ -127,19 +129,26 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadChart() {
         chartJob?.cancel()
+        monthChartJob?.cancel()
         val chart = findViewById<StatsChartView>(R.id.mainChart) ?: return
         val heatmap = findViewById<CalendarHeatmapView>(R.id.calendarHeatmap) ?: return
+        val tvMonthTotal = findViewById<TextView>(R.id.tvMonthTotal)
+        val monthChart = findViewById<StatsChartView>(R.id.monthChart)
 
         if (useAllTime) {
             chart.visibility = android.view.View.GONE
             btnBackToAll.visibility = android.view.View.GONE
             heatmap.visibility = android.view.View.VISIBLE
+            tvMonthTotal?.visibility = android.view.View.VISIBLE
+            monthChart?.visibility = android.view.View.VISIBLE
             loadHeatmap()
             return
         }
         chart.visibility = android.view.View.VISIBLE
         btnBackToAll.visibility = android.view.View.VISIBLE
         heatmap.visibility = android.view.View.GONE
+        tvMonthTotal?.visibility = android.view.View.GONE
+        monthChart?.visibility = android.view.View.GONE
         chartJob = lifecycleScope.launch {
             repository.chartFlow(selectedDayStart, selectedDayEnd)
                 .collectLatest { points ->
@@ -150,13 +159,28 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadHeatmap() {
         heatmapJob?.cancel()
+        monthChartJob?.cancel()
         val heatmap = findViewById<CalendarHeatmapView>(R.id.calendarHeatmap) ?: return
+        val tvMonthTotal = findViewById<TextView>(R.id.tvMonthTotal)
+        val monthChart = findViewById<StatsChartView>(R.id.monthChart)
 
         val monthStart = DateUtils.dayStartMillis(currentMonth.atDay(1))
         val monthEnd = DateUtils.dayStartMillis(currentMonth.plusMonths(1).atDay(1))
 
         val queryStart = DateUtils.dayStartMillis(currentMonth.atDay(1).minusDays(1))
         val queryEnd = monthEnd
+
+        // 月消息总数 + 月折线图
+        tvMonthTotal?.visibility = android.view.View.VISIBLE
+        monthChart?.visibility = android.view.View.VISIBLE
+        monthChartJob = lifecycleScope.launch {
+            repository.dailyCountsFlow(monthStart, monthEnd)
+                .collectLatest { points ->
+                    val total = points.sumOf { it.count }
+                    tvMonthTotal?.text = "${currentMonth.monthValue}月 共 $total 条消息"
+                    monthChart?.setData(points, monthStart, monthEnd)
+                }
+        }
 
         heatmap.onMonthChange = { newMonth ->
             currentMonth = newMonth

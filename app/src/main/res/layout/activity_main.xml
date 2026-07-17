@@ -41,6 +41,23 @@
         android:layout_marginTop="8dp"
         android:visibility="gone" />
 
+    <TextView
+        android:id="@+id/tvMonthTotal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:gravity="center"
+        android:textColor="#333333"
+        android:textSize="16sp"
+        android:visibility="gone" />
+
+    <com.example.wechatstats.StatsChartView
+        android:id="@+id/monthChart"
+        android:layout_width="match_parent"
+        android:layout_height="120dp"
+        android:layout_marginTop="4dp"
+        android:visibility="gone" />
+
     <com.example.wechatstats.CalendarHeatmapView
         android:id="@+id/calendarHeatmap"
         android:layout_width="match_parent"
