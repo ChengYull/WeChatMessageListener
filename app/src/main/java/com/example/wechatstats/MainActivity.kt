@@ -252,16 +252,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showDeleteGroupDialog(group: GroupRow) {
-        AlertDialog.Builder(this)
-            .setTitle(R.string.dialog_delete_title)
-            .setMessage("确定删除「${group.groupName}」的所有统计记录？此操作不可恢复。")
-            .setPositiveButton(R.string.dialog_confirm) { _, _ ->
-                lifecycleScope.launch {
-                    repository.deleteGroup(group.groupName)
+        val anchor = findViewById<RecyclerView>(R.id.recyclerViewStats).findViewHolderForAdapterPosition(
+            adapter.currentList.indexOf(group)
+        )?.itemView
+        val popup = android.widget.PopupMenu(this, anchor ?: findViewById(R.id.recyclerViewStats))
+        popup.menu.add("删除记录")
+        popup.setOnMenuItemClickListener {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.dialog_delete_title)
+                .setMessage("确定删除「${group.groupName}」的所有统计记录？此操作不可恢复。")
+                .setPositiveButton(R.string.dialog_confirm) { _, _ ->
+                    lifecycleScope.launch {
+                        repository.deleteGroup(group.groupName)
+                    }
                 }
-            }
-            .setNegativeButton(R.string.dialog_cancel, null)
-            .show()
+                .setNegativeButton(R.string.dialog_cancel, null)
+                .show()
+            true
+        }
+        popup.show()
     }
 
     private fun openMembers(group: GroupRow) {
