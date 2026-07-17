@@ -28,6 +28,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adapter: GroupAdapter
     private lateinit var btnOpenListener: Button
     private lateinit var btnImport: Button
+    private lateinit var btnBackToAll: Button
 
     private val importLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@registerForActivityResult
@@ -88,12 +89,18 @@ class MainActivity : AppCompatActivity() {
 
         btnOpenListener = findViewById(R.id.btnOpenListener)
         btnImport = findViewById(R.id.btnImport)
+        btnBackToAll = findViewById(R.id.btnBackToAll)
 
         btnOpenListener.setOnClickListener {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         }
         btnImport.setOnClickListener {
             importLauncher.launch(arrayOf("application/json", "*/*"))
+        }
+        btnBackToAll.setOnClickListener {
+            useAllTime = true
+            launchGroupsFlow()
+            loadChart()
         }
 
         launchGroupsFlow()
@@ -125,11 +132,13 @@ class MainActivity : AppCompatActivity() {
 
         if (useAllTime) {
             chart.visibility = android.view.View.GONE
+            btnBackToAll.visibility = android.view.View.GONE
             heatmap.visibility = android.view.View.VISIBLE
             loadHeatmap()
             return
         }
         chart.visibility = android.view.View.VISIBLE
+        btnBackToAll.visibility = android.view.View.VISIBLE
         heatmap.visibility = android.view.View.GONE
         chartJob = lifecycleScope.launch {
             repository.chartFlow(selectedDayStart, selectedDayEnd)
