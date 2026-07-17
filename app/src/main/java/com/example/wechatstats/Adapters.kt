@@ -14,7 +14,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class GroupAdapter(private val onClick: (GroupRow) -> Unit) :
+class GroupAdapter(
+    private val onClick: (GroupRow) -> Unit,
+    private val onLongClick: (GroupRow) -> Unit = {}
+) :
     ListAdapter<GroupRow, GroupAdapter.VH>(object : DiffUtil.ItemCallback<GroupRow>() {
         override fun areItemsTheSame(oldItem: GroupRow, newItem: GroupRow) =
             oldItem.groupName == newItem.groupName
@@ -28,6 +31,10 @@ class GroupAdapter(private val onClick: (GroupRow) -> Unit) :
         holder.label.text = "${position + 1}. ${item.groupName}"
         holder.count.visibility = android.view.View.GONE
         holder.itemView.setOnClickListener { onClick(item) }
+        holder.itemView.setOnLongClickListener {
+            onLongClick(item)
+            true
+        }
     }
     class VH(view: View) : RecyclerView.ViewHolder(view) {
         val label: TextView = view.findViewById(R.id.tvNickname)

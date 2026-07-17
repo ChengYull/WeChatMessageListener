@@ -85,7 +85,10 @@ class MainActivity : AppCompatActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         repository = StatsRepository(AppDatabase.getDatabase(applicationContext).messageDao())
 
-        adapter = GroupAdapter { group -> openMembers(group) }
+        adapter = GroupAdapter(
+            onClick = { group -> openMembers(group) },
+            onLongClick = { group -> showDeleteGroupDialog(group) }
+        )
         findViewById<RecyclerView>(R.id.recyclerViewStats).apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
             this.adapter = this@MainActivity.adapter
@@ -246,6 +249,19 @@ class MainActivity : AppCompatActivity() {
                     .show()
             }
         }
+    }
+
+    private fun showDeleteGroupDialog(group: GroupRow) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.dialog_delete_title)
+            .setMessage("确定删除「${group.groupName}」的所有统计记录？此操作不可恢复。")
+            .setPositiveButton(R.string.dialog_confirm) { _, _ ->
+                lifecycleScope.launch {
+                    repository.deleteGroup(group.groupName)
+                }
+            }
+            .setNegativeButton(R.string.dialog_cancel, null)
+            .show()
     }
 
     private fun openMembers(group: GroupRow) {
