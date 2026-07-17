@@ -20,26 +20,11 @@
         android:text="@string/btn_open_listener" />
 
     <Button
-        android:id="@+id/btnClear"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="@string/btn_clear" />
-
-    <Button
         android:id="@+id/btnImport"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:text="@string/menu_import" />
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/dateChipStrip"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:orientation="horizontal"
-        android:nestedScrollingEnabled="false" />
 
     <com.example.wechatstats.StatsChartView
         android:id="@+id/mainChart"

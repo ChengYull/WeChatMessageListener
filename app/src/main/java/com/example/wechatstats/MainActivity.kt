@@ -27,9 +27,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var repository: StatsRepository
     private lateinit var adapter: GroupAdapter
     private lateinit var btnOpenListener: Button
-    private lateinit var btnClear: Button
     private lateinit var btnImport: Button
-    private lateinit var dateAdapter: DateAdapter
 
     private val importLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@registerForActivityResult
@@ -71,10 +69,9 @@ class MainActivity : AppCompatActivity() {
     private var chartJob: Job? = null
     private var heatmapJob: Job? = null
     private var currentMonth: YearMonth = YearMonth.now()
-    private var selectedDayStart: Long = -1L
-    private var selectedDayEnd: Long = -1L
+    private var selectedDayStart: Long = DateUtils.dayStartMillis(DateUtils.today())
+    private var selectedDayEnd: Long = DateUtils.dayEndMillis(DateUtils.today())
     private var useAllTime: Boolean = true
-    private var lastBuildDate: LocalDate? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -90,23 +87,15 @@ class MainActivity : AppCompatActivity() {
         }
 
         btnOpenListener = findViewById(R.id.btnOpenListener)
-        btnClear = findViewById(R.id.btnClear)
+        btnImport = findViewById(R.id.btnImport)
 
         btnOpenListener.setOnClickListener {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         }
-        btnClear.setOnClickListener {
-            lifecycleScope.launch { repository.clear() }
-        }
-
-        btnImport = findViewById(R.id.btnImport)
         btnImport.setOnClickListener {
             importLauncher.launch(arrayOf("application/json", "*/*"))
         }
 
-        // 日期 Chip 条
-        lastBuildDate = DateUtils.today()
-        buildDateChips()
         launchGroupsFlow()
         loadChart()
     }
@@ -117,37 +106,6 @@ class MainActivity : AppCompatActivity() {
             getString(R.string.listener_enabled)
         } else {
             getString(R.string.btn_open_listener)
-        }
-        // 跨过 0 点后刷新日期 Chip
-        val today = DateUtils.today()
-        if (lastBuildDate != today) {
-            lastBuildDate = today
-            buildDateChips()
-            launchGroupsFlow()
-            loadChart()
-        }
-    }
-
-    private fun buildDateChips() {
-        val dates = listOf<LocalDate?>(null) + DateUtils.recentDates()
-        if (::dateAdapter.isInitialized) {
-            dateAdapter.replaceDates(dates, resetSelection = true)
-        } else {
-            dateAdapter = DateAdapter(dates, 0) { _, date ->
-                if (date == null) {
-                    useAllTime = true
-                } else {
-                    useAllTime = false
-                    selectedDayStart = DateUtils.dayStartMillis(date)
-                    selectedDayEnd = DateUtils.dayEndMillis(date)
-                }
-                launchGroupsFlow()
-                loadChart()
-            }
-        }
-        findViewById<RecyclerView>(R.id.dateChipStrip).apply {
-            layoutManager = LinearLayoutManager(this@MainActivity, LinearLayoutManager.HORIZONTAL, false)
-            adapter = this@MainActivity.dateAdapter
         }
     }
 
