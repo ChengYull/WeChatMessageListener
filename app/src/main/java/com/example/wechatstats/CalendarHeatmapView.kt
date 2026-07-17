@@ -25,10 +25,10 @@ class CalendarHeatmapView @JvmOverloads constructor(
     private var cellGap = 4f
     private var cornerRadius = 4f
     private var headerHeight = 24f
-    private var labelWidth = 32f
-    private var dayLabelWidth = 20f
+    private var labelWidth = 0f
+    private var dayLabelWidth = 0f
     private var contentWidth = 0f
-    private var contentLeft = 0f
+    private var contentLeft = 4f
 
     private val cellPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val cellStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -76,8 +76,8 @@ class CalendarHeatmapView @JvmOverloads constructor(
         cellGap = 4f * density
         cornerRadius = 4f * density
         headerHeight = 24f * density
-        labelWidth = 32f * density
-        dayLabelWidth = 20f * density
+        labelWidth = 0f
+        dayLabelWidth = 0f
 
         val labelSize = 11f * density
         val countSize = 9f * density
@@ -98,8 +98,8 @@ class CalendarHeatmapView @JvmOverloads constructor(
             textAlign = Paint.Align.CENTER
         }
 
-        contentLeft = labelWidth + dayLabelWidth + cellGap
-        contentWidth = w.toFloat() - contentLeft - cellGap
+        contentLeft = 4f * density
+        contentWidth = w.toFloat() - 8f * density
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {

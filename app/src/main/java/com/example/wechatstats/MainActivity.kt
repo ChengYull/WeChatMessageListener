@@ -72,7 +72,6 @@ class MainActivity : AppCompatActivity() {
     private var groupsJob: Job? = null
     private var chartJob: Job? = null
     private var heatmapJob: Job? = null
-    private var monthChartJob: Job? = null
     private var currentMonth: YearMonth = YearMonth.now()
     private var selectedDayStart: Long = DateUtils.dayStartMillis(DateUtils.today())
     private var selectedDayEnd: Long = DateUtils.dayEndMillis(DateUtils.today())
@@ -149,7 +148,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadChart() {
         chartJob?.cancel()
-        monthChartJob?.cancel()
+        heatmapJob?.cancel()
         val chart = findViewById<StatsChartView>(R.id.mainChart) ?: return
         val heatmap = findViewById<CalendarHeatmapView>(R.id.calendarHeatmap) ?: return
         val tvMonthTotal = findViewById<TextView>(R.id.tvMonthTotal)
@@ -179,7 +178,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadHeatmap() {
         heatmapJob?.cancel()
-        monthChartJob?.cancel()
         val heatmap = findViewById<CalendarHeatmapView>(R.id.calendarHeatmap) ?: return
         val tvMonthTotal = findViewById<TextView>(R.id.tvMonthTotal)
         val monthChart = findViewById<StatsChartView>(R.id.monthChart)
@@ -193,14 +191,6 @@ class MainActivity : AppCompatActivity() {
         // 月消息总数 + 月折线图
         tvMonthTotal?.visibility = android.view.View.VISIBLE
         monthChart?.visibility = android.view.View.VISIBLE
-        monthChartJob = lifecycleScope.launch {
-            repository.dailyCountsFlow(monthStart, monthEnd)
-                .collectLatest { points ->
-                    val total = points.sumOf { it.count }
-                    tvMonthTotal?.text = "${currentMonth.monthValue}月 共 $total 条消息"
-                    monthChart?.setData(points, monthStart, monthEnd, StatsChartView.XLABEL_DATE)
-                }
-        }
 
         heatmap.onMonthChange = { newMonth ->
             currentMonth = newMonth
@@ -215,9 +205,18 @@ class MainActivity : AppCompatActivity() {
             loadChart()
         }
 
+        // 两个 Flow 共用同一个查询，合并到同一个协程中避免竞争
         heatmapJob = lifecycleScope.launch {
             repository.dailyCountsFlow(queryStart, queryEnd)
                 .collectLatest { points ->
+                    // 过滤出本月数据给月折线图
+                    val monthPoints = points.filter {
+                        it.bucketStartMillis >= monthStart && it.bucketStartMillis < monthEnd
+                    }
+                    val total = monthPoints.sumOf { it.count }
+                    tvMonthTotal?.text = "${currentMonth.monthValue}月 共 $total 条消息"
+                    monthChart?.setData(monthPoints, monthStart, monthEnd, StatsChartView.XLABEL_DATE)
+                    // 全部数据（含前一天）给日历图
                     heatmap.setData(points, currentMonth)
                 }
         }
