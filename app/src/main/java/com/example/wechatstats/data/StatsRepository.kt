@@ -29,6 +29,7 @@ class StatsRepository(private val dao: MessageDao) {
         dao.dailyCountsFlow(dayStart, dayEnd)
 
     suspend fun insert(record: MessageRecord) = dao.insert(record)
+    suspend fun insertAll(records: List<MessageRecord>) = dao.insertAll(records)
     suspend fun clear() = dao.clear()
 
     suspend fun deleteGroup(groupName: String) = dao.deleteGroup(groupName)

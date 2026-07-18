@@ -6,15 +6,13 @@ import androidx.core.content.FileProvider
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 object ExportUtils {
 
-    private val DATE_FMT = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-    private val TIME_FMT = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-    private val TS_FMT = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+    private val DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    private val TIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
 
     fun exportGroup(
         context: Context,
@@ -25,15 +23,7 @@ object ExportUtils {
     ): Uri? {
         val dateLabel = dateRangeLabel(dayStart, dayEnd)
         val fileName = "${sanitize(groupName)}_${dateLabel}.json"
-
-        val json = buildJson(
-            groupName = groupName,
-            sender = null,
-            dayStart = dayStart,
-            dayEnd = dayEnd,
-            messages = messages
-        )
-
+        val json = buildJson(groupName, null, dayStart, dayEnd, messages)
         return writeJson(context, fileName, json)
     }
 
@@ -47,15 +37,7 @@ object ExportUtils {
     ): Uri? {
         val dateLabel = dateRangeLabel(dayStart, dayEnd)
         val fileName = "${sanitize(groupName)}_${sanitize(sender)}_${dateLabel}.json"
-
-        val json = buildJson(
-            groupName = groupName,
-            sender = sender,
-            dayStart = dayStart,
-            dayEnd = dayEnd,
-            messages = messages
-        )
-
+        val json = buildJson(groupName, sender, dayStart, dayEnd, messages)
         return writeJson(context, fileName, json)
     }
 
@@ -71,22 +53,21 @@ object ExportUtils {
         root.put("groupName", groupName)
         if (sender != null) root.put("sender", sender)
         root.put("dateRange", dateRangeLabel(dayStart, dayEnd))
-        root.put("exportTime", TIME_FMT.format(Date()))
+        root.put("exportTime", TIME_FMT.format(java.time.LocalDateTime.now()))
         root.put("totalMessages", messages.size)
 
         val arr = JSONArray()
+        // 批量构建 JSONArray——避免每条消息都 new JSONObject + put
         for (m in messages) {
             val obj = JSONObject()
-            obj.put("sender", m.sender)
-            obj.put("groupName", m.groupName)
-            obj.put("text", m.text)
-            obj.put("timestamp", m.timestamp)
-            obj.put("time", TS_FMT.format(Date(m.timestamp)))
+            obj.put("s", m.sender)
+            obj.put("t", m.text)
+            obj.put("ts", m.timestamp)
             arr.put(obj)
         }
         root.put("messages", arr)
 
-        return root.toString(2)
+        return root.toString()
     }
 
     private fun writeJson(context: Context, fileName: String, content: String): Uri? {
@@ -99,7 +80,7 @@ object ExportUtils {
 
     private fun dateRangeLabel(dayStart: Long, dayEnd: Long): String {
         if (dayStart == -1L) return "all"
-        return DATE_FMT.format(Date(dayStart))
+        return LocalDate.ofEpochDay(dayStart / 86400000).format(DATE_FMT)
     }
 
     private fun sanitize(name: String): String {

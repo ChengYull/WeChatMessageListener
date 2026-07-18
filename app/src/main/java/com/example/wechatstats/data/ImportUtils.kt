@@ -14,9 +14,6 @@ object ImportUtils {
     private const val TYPE_MEMBER = "member"
     private const val TYPE_MESSAGES = "messages"
 
-    /**
-     * 群列表页导入：接受 group 或 messages 类型。
-     */
     fun parseImportForGroupList(
         context: Context,
         uri: Uri
@@ -33,9 +30,6 @@ object ImportUtils {
         return buildRecords(json)
     }
 
-    /**
-     * 成员页导入：接受 member 或 messages 类型，需群名匹配。
-     */
     fun parseImportForMember(
         context: Context,
         uri: Uri,
@@ -58,9 +52,6 @@ object ImportUtils {
         return buildRecords(json)
     }
 
-    /**
-     * 消息页导入：接受 messages 类型，需群名+发言人匹配。
-     */
     fun parseImportForMessage(
         context: Context,
         uri: Uri,
@@ -105,7 +96,6 @@ object ImportUtils {
         }
 
         // 兼容旧版本导出文件（无 type 字段）
-        // 有 sender 字段 → messages 类型；只有 groupName → group 类型
         if (!root.has("type")) {
             val hasSender = root.has("sender") && root.optString("sender", "").isNotEmpty()
             root.put("type", if (hasSender) TYPE_MESSAGES else TYPE_GROUP)
@@ -118,15 +108,33 @@ object ImportUtils {
         val rootGroupName = root.optString("groupName", "")
         val fileSender = root.optString("sender", "")
         val messages = root.optJSONArray("messages") ?: JSONArray()
-        val records = mutableListOf<MessageRecord>()
+        val len = messages.length()
+        val records = ArrayList<MessageRecord>(len)
 
-        for (i in 0 until messages.length()) {
+        // 判断是新格式（短字段名）还是旧格式
+        val isOldFmt = len > 0 && isOldFormat(messages.getJSONObject(0))
+
+        for (i in 0 until len) {
             val msg = messages.getJSONObject(i)
-            val sender = msg.optString("sender", fileSender)
-            val text = msg.optString("text", "")
-            val timestamp = msg.optLong("timestamp", 0L)
-            // 如果根层 groupName 为空，从每条消息自身读取
-            val groupName = if (rootGroupName.isEmpty()) msg.optString("groupName", "") else rootGroupName
+            val sender = if (isOldFmt) {
+                msg.optString("sender", fileSender)
+            } else {
+                msg.optString("s", fileSender)
+            }
+            val text = if (isOldFmt) {
+                msg.optString("text", "")
+            } else {
+                msg.optString("t", "")
+            }
+            val timestamp = if (isOldFmt) {
+                msg.optLong("timestamp", 0L)
+            } else {
+                msg.optLong("ts", 0L)
+            }
+            // 根层有 groupName 则继承，否则从消息自身读取（旧格式兼容）
+            val groupName = if (rootGroupName.isNotEmpty()) rootGroupName
+            else if (isOldFmt) msg.optString("groupName", "")
+            else rootGroupName
             val notificationKey = computeKey(groupName, sender, text, timestamp / 1000)
             records.add(
                 MessageRecord(
@@ -142,10 +150,20 @@ object ImportUtils {
         return Result.success(ImportData(records, rootGroupName, fileSender))
     }
 
+    private fun isOldFormat(msg: JSONObject): Boolean {
+        return msg.has("sender") || msg.has("groupName")
+    }
+
     private fun computeKey(groupName: String, sender: String, text: String, postTimeSeconds: Long): String {
-        val raw = "$groupName|$sender|$text|$postTimeSeconds"
         val md = MessageDigest.getInstance("SHA-256")
-        val bytes = md.digest(raw.toByteArray(Charsets.UTF_8))
+        md.update(groupName.toByteArray(Charsets.UTF_8))
+        md.update('|'.code.toByte())
+        md.update(sender.toByteArray(Charsets.UTF_8))
+        md.update('|'.code.toByte())
+        md.update(text.toByteArray(Charsets.UTF_8))
+        md.update('|'.code.toByte())
+        for (b in postTimeSeconds.toString().toByteArray(Charsets.UTF_8)) md.update(b)
+        val bytes = md.digest()
         return bytes.joinToString("") { "%02x".format(it) }
     }
 }

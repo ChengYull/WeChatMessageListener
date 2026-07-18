@@ -48,11 +48,8 @@ class MainActivity : AppCompatActivity() {
                 return@launch
             }
             val data = result.getOrThrow()
-            var inserted = 0
-            for (record in data.records) {
-                val id = repository.insert(record)
-                if (id != -1L) inserted++
-            }
+            val ids = repository.insertAll(data.records)
+            val inserted = ids.count { it != -1L }
             AlertDialog.Builder(this@MainActivity)
                 .setTitle(R.string.menu_import)
                 .setMessage(

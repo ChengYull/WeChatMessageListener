@@ -11,6 +11,9 @@ interface MessageDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(record: MessageRecord): Long
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertAll(records: List<MessageRecord>): List<Long>
+
     // ── 全量查询 ──
 
     @Query(
