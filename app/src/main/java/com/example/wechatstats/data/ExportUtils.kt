@@ -27,6 +27,22 @@ object ExportUtils {
         return writeJson(context, fileName, json)
     }
 
+    /**
+     * 多群导出：将 flat 消息列表按 groupName 分组，生成 type="groups" 格式。
+     */
+    fun exportAllGroups(
+        context: Context,
+        messages: List<MessageRecord>,
+        dayStart: Long,
+        dayEnd: Long
+    ): Uri? {
+        val dateLabel = dateRangeLabel(dayStart, dayEnd)
+        val fileName = "全部群_${dateLabel}.json"
+        val grouped = messages.groupBy { it.groupName }
+        val json = buildMultiGroupJson(grouped, dayStart, dayEnd)
+        return writeJson(context, fileName, json)
+    }
+
     fun exportSender(
         context: Context,
         groupName: String,
@@ -68,6 +84,39 @@ object ExportUtils {
             arr.put(obj)
         }
         root.put("messages", arr)
+
+        return root.toString()
+    }
+
+    private fun buildMultiGroupJson(
+        grouped: Map<String, List<MessageRecord>>,
+        dayStart: Long,
+        dayEnd: Long
+    ): String {
+        val root = JSONObject()
+        root.put("type", "groups")
+        root.put("dateRange", dateRangeLabel(dayStart, dayEnd))
+        root.put("exportTime", TIME_FMT.format(java.time.LocalDateTime.now()))
+
+        val groupsArr = JSONArray()
+        var total = 0
+        for ((groupName, messages) in grouped) {
+            total += messages.size
+            val groupObj = JSONObject()
+            groupObj.put("n", groupName)
+            val msgArr = JSONArray()
+            for (m in messages) {
+                val obj = JSONObject()
+                obj.put("s", m.sender)
+                obj.put("t", m.text)
+                obj.put("ts", m.timestamp)
+                msgArr.put(obj)
+            }
+            groupObj.put("m", msgArr)
+            groupsArr.put(groupObj)
+        }
+        root.put("totalMessages", total)
+        root.put("groups", groupsArr)
 
         return root.toString()
     }

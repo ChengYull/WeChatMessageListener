@@ -226,8 +226,8 @@ class MainActivity : AppCompatActivity() {
             } else {
                 repository.getAllMessages(selectedDayStart, selectedDayEnd)
             }
-            val uri = ExportUtils.exportGroup(
-                this@MainActivity, "", allMessages,
+            val uri = ExportUtils.exportAllGroups(
+                this@MainActivity, allMessages,
                 if (useAllTime) -1L else selectedDayStart,
                 if (useAllTime) -1L else selectedDayEnd
             )

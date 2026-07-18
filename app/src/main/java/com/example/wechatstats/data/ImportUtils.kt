@@ -13,6 +13,7 @@ object ImportUtils {
     private const val TYPE_GROUP = "group"
     private const val TYPE_MEMBER = "member"
     private const val TYPE_MESSAGES = "messages"
+    private const val TYPE_GROUPS = "groups"
 
     fun parseImportForGroupList(
         context: Context,
@@ -23,7 +24,7 @@ object ImportUtils {
         val json = root.getOrThrow()
 
         val fileType = json.optString("type", "")
-        if (fileType != TYPE_GROUP && fileType != TYPE_MESSAGES) {
+        if (fileType != TYPE_GROUP && fileType != TYPE_MESSAGES && fileType != TYPE_GROUPS) {
             return Result.failure(ImportException("导入文件类型不匹配：请在「群聊统计」界面导入"))
         }
 
@@ -40,6 +41,9 @@ object ImportUtils {
         val json = root.getOrThrow()
 
         val fileType = json.optString("type", "")
+        if (fileType == TYPE_GROUPS) {
+            return Result.failure(ImportException("多群文件不能在成员统计界面导入"))
+        }
         if (fileType != TYPE_MEMBER && fileType != TYPE_MESSAGES) {
             return Result.failure(ImportException("导入文件类型不匹配：请在「成员统计」界面导入"))
         }
@@ -63,6 +67,9 @@ object ImportUtils {
         val json = root.getOrThrow()
 
         val fileType = json.optString("type", "")
+        if (fileType == TYPE_GROUPS) {
+            return Result.failure(ImportException("多群文件不能在消息明细界面导入"))
+        }
         if (fileType != TYPE_MESSAGES) {
             return Result.failure(ImportException("导入文件类型不匹配：请在「消息明细」界面导入"))
         }
@@ -105,6 +112,11 @@ object ImportUtils {
     }
 
     private fun buildRecords(root: JSONObject): Result<ImportData> {
+        // 多群文件：走分组解析，每条消息有自己的 groupName
+        if (root.optString("type") == TYPE_GROUPS) {
+            return parseGroupsImport(root)
+        }
+
         val rootGroupName = root.optString("groupName", "")
         val fileSender = root.optString("sender", "")
         val messages = root.optJSONArray("messages") ?: JSONArray()
@@ -148,6 +160,36 @@ object ImportUtils {
         }
 
         return Result.success(ImportData(records, rootGroupName, fileSender))
+    }
+
+    /**
+     * 解析多群导出文件（type="groups"）。每条消息从所属群分组获取 groupName。
+     */
+    private fun parseGroupsImport(root: JSONObject): Result<ImportData> {
+        val groupsArr = root.optJSONArray("groups") ?: JSONArray()
+        val allRecords = ArrayList<MessageRecord>()
+        for (i in 0 until groupsArr.length()) {
+            val groupObj = groupsArr.getJSONObject(i)
+            val groupName = groupObj.optString("n", "")
+            val messages = groupObj.optJSONArray("m") ?: JSONArray()
+            for (j in 0 until messages.length()) {
+                val msg = messages.getJSONObject(j)
+                val sender = msg.optString("s", "")
+                val text = msg.optString("t", "")
+                val timestamp = msg.optLong("ts", 0L)
+                val notificationKey = computeKey(groupName, sender, text, timestamp / 1000)
+                allRecords.add(
+                    MessageRecord(
+                        notificationKey = notificationKey,
+                        groupName = groupName,
+                        sender = sender,
+                        text = text,
+                        timestamp = timestamp
+                    )
+                )
+            }
+        }
+        return Result.success(ImportData(allRecords, groupName = "", sender = ""))
     }
 
     private fun isOldFormat(msg: JSONObject): Boolean {
