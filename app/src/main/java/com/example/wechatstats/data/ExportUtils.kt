@@ -50,7 +50,9 @@ object ExportUtils {
     ): String {
         val root = JSONObject()
         root.put("type", if (sender != null) "messages" else "group")
-        root.put("groupName", groupName)
+        // 主界面导出时 groupName 传空字符串，从第一条消息中补上
+        val actualGroupName = if (groupName.isEmpty()) messages.firstOrNull()?.groupName.orEmpty() else groupName
+        root.put("groupName", actualGroupName)
         if (sender != null) root.put("sender", sender)
         root.put("dateRange", dateRangeLabel(dayStart, dayEnd))
         root.put("exportTime", TIME_FMT.format(java.time.LocalDateTime.now()))
