@@ -82,7 +82,7 @@ interface MessageDao {
 
     @Query(
         """
-        SELECT (timestamp / 86400000) * 86400000 AS bucketStartMillis, COUNT(*) AS count
+        SELECT ((timestamp + 28800000) / 86400000) * 86400000 AS bucketStartMillis, COUNT(*) AS count
         FROM message_record
         WHERE timestamp >= :dayStart AND timestamp < :dayEnd
         GROUP BY bucketStartMillis

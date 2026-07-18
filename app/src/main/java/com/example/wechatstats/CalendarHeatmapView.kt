@@ -9,6 +9,7 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import com.example.wechatstats.data.ChartPoint
+import com.example.wechatstats.data.DateUtils
 import java.time.LocalDate
 import java.time.YearMonth
 
@@ -232,9 +233,9 @@ class CalendarHeatmapView @JvmOverloads constructor(
         return date.dayOfWeek.value % 7
     }
 
-    /** 与 DAO dailyCountsFlow 中 (timestamp / 86400000) * 86400000 保持一致的 UTC 日起始 */
+    /** 与 DateUtils.dayStartMillis 一致 */
     private fun dayStartMillis(date: LocalDate): Long {
-        return date.toEpochDay() * 86400000L
+        return DateUtils.dayStartMillis(date)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {

@@ -1,17 +1,21 @@
 package com.example.wechatstats.data
 
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 object DateUtils {
-    fun today(): LocalDate = LocalDate.now()
+    /** 中国时区偏移量（毫秒） */
+    const val CHINA_OFFSET_MS = 8L * 60 * 60 * 1000
 
-    /** 与 DAO dailyCountsFlow 中 (timestamp / 86400000) * 86400000 一致的 UTC 日起始毫秒 */
+    fun today(): LocalDate = LocalDate.now(ZoneOffset.ofHours(8))
+
+    /** UTC+8 时区的日期起始毫秒（UTC 时间戳） */
     fun dayStartMillis(date: LocalDate): Long =
-        date.toEpochDay() * 86400000L
+        date.atStartOfDay(ZoneOffset.ofHours(8)).toInstant().toEpochMilli()
 
     fun dayEndMillis(date: LocalDate): Long =
-        (date.toEpochDay() + 1) * 86400000L
+        date.plusDays(1).atStartOfDay(ZoneOffset.ofHours(8)).toInstant().toEpochMilli()
 
     /** 最近 N 天（含今天），从新到旧 */
     fun recentDates(count: Int = 14): List<LocalDate> =
