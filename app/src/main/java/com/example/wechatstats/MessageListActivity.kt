@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -71,6 +72,11 @@ class MessageListActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_list)
+        findViewById<Toolbar>(R.id.toolbar).apply {
+            setSupportActionBar(this)
+            setNavigationIcon(R.drawable.ic_arrow_back)
+            setNavigationOnClickListener { onBackPressedDispatcher.onBackPressed() }
+        }
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         groupName = intent.getStringExtra(MainActivity.EXTRA_GROUP_NAME).orEmpty()

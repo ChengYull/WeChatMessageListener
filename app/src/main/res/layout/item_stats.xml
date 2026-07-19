@@ -10,7 +10,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:textColor="#000000"
+        android:textColor="#333333"
         android:textSize="16sp"
         android:text="昵称" />
 
@@ -18,7 +18,7 @@
         android:id="@+id/tvCount"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="#FF5722"
+        android:textColor="#07C160"
         android:textSize="16sp"
         android:textStyle="bold"
         android:text="0 次" />

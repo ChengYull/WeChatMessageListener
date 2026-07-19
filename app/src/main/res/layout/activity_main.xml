@@ -2,6 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#FFF8F9FA"
     android:orientation="vertical"
     android:padding="16dp">
 
@@ -10,7 +11,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="8dp"
         android:text="@string/group_list_hint"
-        android:textColor="#666666"
+        android:textColor="#999999"
         android:textSize="13sp" />
 
     <Button

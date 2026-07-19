@@ -39,10 +39,10 @@ class DateAdapter(
             DateUtils.formatLabel(date)
         }
         if (position == selectedIndex) {
-            holder.label.setTextColor(0xFFFF5722.toInt())
+            holder.label.setTextColor(0xFF07C160.toInt())
             holder.label.setTypeface(null, Typeface.BOLD)
         } else {
-            holder.label.setTextColor(0xFF666666.toInt())
+            holder.label.setTextColor(0xFF999999.toInt())
             holder.label.setTypeface(null, Typeface.NORMAL)
         }
         holder.itemView.setOnClickListener {
