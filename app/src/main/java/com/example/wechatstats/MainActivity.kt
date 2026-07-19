@@ -7,6 +7,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.WindowManager
 import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -31,7 +32,9 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var repository: StatsRepository
     private lateinit var adapter: GroupAdapter
-    private lateinit var btnOpenListener: Button
+    private lateinit var tvPermissionHint: TextView
+    private lateinit var btnOpenListener: TextView
+    private lateinit var tvPermissionEnabledIcon: TextView
     private lateinit var btnBackToAll: Button
 
     private val importLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -97,6 +100,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         btnOpenListener = findViewById(R.id.btnOpenListener)
+        tvPermissionHint = findViewById(R.id.tvPermissionHint)
+        tvPermissionEnabledIcon = findViewById(R.id.tvPermissionEnabledIcon)
         btnBackToAll = findViewById(R.id.btnBackToAll)
 
         btnOpenListener.setOnClickListener {
@@ -114,10 +119,19 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        btnOpenListener.text = if (WeChatNotificationListener.isEnabled(this)) {
-            getString(R.string.listener_enabled)
+        val enabled = WeChatNotificationListener.isEnabled(this)
+        if (enabled) {
+            tvPermissionHint.text = getString(R.string.listener_enabled_hint)
+            tvPermissionHint.setTextColor(0xFF07C160.toInt())
+            btnOpenListener.visibility = android.view.View.GONE
+            tvPermissionEnabledIcon.visibility = android.view.View.VISIBLE
+            tvPermissionEnabledIcon.text = "✓"
         } else {
-            getString(R.string.btn_open_listener)
+            tvPermissionHint.text = getString(R.string.listener_disabled_hint)
+            tvPermissionHint.setTextColor(0xFF666666.toInt())
+            btnOpenListener.visibility = android.view.View.VISIBLE
+            btnOpenListener.text = ">> 去开启"
+            tvPermissionEnabledIcon.visibility = android.view.View.GONE
         }
     }
 

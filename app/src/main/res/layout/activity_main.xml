@@ -18,7 +18,8 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:paddingHorizontal="16dp"
+        android:paddingTop="16dp">
 
         <TextView
             android:layout_width="match_parent"
@@ -28,11 +29,39 @@
             android:textColor="#999999"
             android:textSize="13sp" />
 
-        <Button
-            android:id="@+id/btnOpenListener"
+        <LinearLayout
+            android:id="@+id/layoutPermissionStatus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/btn_open_listener" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingVertical="10dp">
+
+            <TextView
+                android:id="@+id/tvPermissionHint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#666666"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/btnOpenListener"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="4dp"
+                android:textColor="#2196F3"
+                android:textSize="14sp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tvPermissionEnabledIcon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:textColor="#07C160"
+                android:textSize="16sp"
+                android:visibility="gone" />
+        </LinearLayout>
 
         <Button
             android:id="@+id/btnBackToAll"

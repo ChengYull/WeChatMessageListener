@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">群聊统计器</string>
-    <string name="btn_open_listener">去开启通知监听权限</string>
-    <string name="listener_enabled">通知监听已开启</string>
+    <string name="listener_disabled_hint">当前未开启通知监听权限</string>
+    <string name="listener_enabled_hint">通知权限已开启</string>
     <string name="btn_clear">清空统计</string>
     <string name="group_list_hint">点击群聊查看成员统计，再点击成员查看消息明细</string>
     <string name="chip_all">全部</string>
